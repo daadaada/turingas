@@ -1,0 +1,20 @@
+<PARAMS>
+output, 8
+</PARAMS>
+
+<REGS>
+0 : offset
+1 : dst
+2 : base
+4, 5 : output_0, output_1
+</REGS>
+
+--:-:-:-:5     MOV base, {2**32-2};
+--:-:-:-:5     MOV offset, {2**5};
+--:-:-:-:5     LEA dst, P0, offset, base, 2;
+--:-:-:-:5     MOV dst, RZ;
+--:-:-:-:2     IADD3.X dst, RZ, RZ, RZ, P0;
+--:-:-:-:2     MOV output_0, output[0];
+--:-:-:-:5     MOV output_1, output[1];
+--:1:-:-:2     STG.E.SYS [output_0], dst;
+--:-:-:-:2     EXIT;

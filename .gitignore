@@ -1,0 +1,4 @@
+# Python setup tmp files
+/build/
+/dist/
+/turingas.egg-info/

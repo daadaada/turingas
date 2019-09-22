@@ -1,0 +1,17 @@
+<PARAMS>
+output, 8
+</PARAMS>
+
+<REGS>
+0 : offset
+1 : dst
+2 : base
+4, 5 : output_0, output_1
+</REGS>
+
+--:-:-:-:5     MOV base, 4;
+--:-:-:-:5     LDC dst, output[0];
+--:-:-:-:2     MOV output_0, output[0];
+--:-:-:-:5     MOV output_1, output[1];
+--:1:-:-:2     STG.E.SYS [output_0], dst;
+--:-:-:-:2     EXIT;

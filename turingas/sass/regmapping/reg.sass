@@ -1,0 +1,19 @@
+<PARAMS>
+output, 8
+</PARAMS>
+
+<REGS>
+0 : low
+1 : dst
+2 : high
+4, 5 : output_0, output_1
+6-9 : a<0-3>
+</REGS>
+
+--:-:-:-:5     MOV high, RZ;
+--:-:-:-:5     MOV a3, 0x100;
+--:-:-:-:2     MOV output_0, output[0];
+--:-:-:-:5     MOV output_1, output[1];
+--:-:-:-:5     PRMT dst, low, 0x1111, high;
+--:1:-:-:2     STG.E.SYS [output_0], dst;
+--:-:-:-:2     EXIT;
