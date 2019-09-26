@@ -253,7 +253,7 @@ def ReplaceRegParamMap(file, reg_map, param_dict):
     if key in param_dict['name_list']:
       raise Exception(f'Name {key} defined both in register and parameters.\n')
   var_re = re.compile(fr'(?<!(?:\.))\b([a-zA-Z_]\w*)(?:\[(\d)\]|\b)(?!\[0x)')
-  def RepalceVar(match, regs, params):
+  def ReplaceVar(match, regs, params):
     var = match.group(1)
     offset = match.group(2)
     if var in grammar:
@@ -270,7 +270,7 @@ def ReplaceRegParamMap(file, reg_map, param_dict):
       # TODO: Or not to allow use RX in the code and raise exeception here.
       return var # In case of R0-R255, RZ, PR
   # Match rest first.
-  file = var_re.sub(lambda match : RepalceVar(match, reg_map, param_dict), file)
+  file = var_re.sub(lambda match : ReplaceVar(match, reg_map, param_dict), file)
 
   return file
     
