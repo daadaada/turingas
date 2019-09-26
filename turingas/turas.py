@@ -272,6 +272,20 @@ def ReplaceRegParamMap(file, reg_map, param_dict):
   # Match rest first.
   file = var_re.sub(lambda match : ReplaceVar(match, reg_map, param_dict), file)
 
+  # Replace interior constant map
+  constants = {
+    'blockDim.x' : 'c[0x0][0x8]',
+    'blockDim.y' : 'c[0x0][0xc]',
+    'blockDim.z' : 'c[0x0][0x10]',
+    'gridDim.x'  : 'c[0x0][0x14]',
+    'gridDim.y'  : 'c[0x0][0x18]',
+    'gridDim.z'  : 'c[0x0][0x1c]'
+  }
+  const_re = re.compile('('+r'|'.join(constants.keys())+')')
+  def ReplaceInteriorConst(match):
+    return constants[match.group(1)]
+  file = const_re.sub(ReplaceInteriorConst, file)
+
   return file
     
 code_re = re.compile(r"^[\t ]*<CODE>(.*?)^\s*<\/CODE>\n?", re.MULTILINE|re.DOTALL|re.IGNORECASE)
