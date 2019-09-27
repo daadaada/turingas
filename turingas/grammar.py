@@ -303,7 +303,7 @@ IADD3, LEA: x
 FADD, IADD3: rs1neg
 1<<127 -
 
-FADD: rs0neg
+FADD, IADD3: rs0neg
 1<<8 -
 
 HMMA: type

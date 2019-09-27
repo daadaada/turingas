@@ -274,12 +274,12 @@ def ReplaceRegParamMap(file, reg_map, param_dict):
 
   # Replace interior constant map
   constants = {
-    'blockDim.x' : 'c[0x0][0x8]',
-    'blockDim.y' : 'c[0x0][0xc]',
-    'blockDim.z' : 'c[0x0][0x10]',
-    'gridDim.x'  : 'c[0x0][0x14]',
-    'gridDim.y'  : 'c[0x0][0x18]',
-    'gridDim.z'  : 'c[0x0][0x1c]'
+    'blockDim.x' : 'c[0x0][0x0]',
+    'blockDim.y' : 'c[0x0][0x4]',
+    'blockDim.z' : 'c[0x0][0x8]',
+    'gridDim.x'  : 'c[0x0][0xc]',
+    'gridDim.y'  : 'c[0x0][0x10]',
+    'gridDim.z'  : 'c[0x0][0x14]'
   }
   const_re = re.compile('('+r'|'.join(constants.keys())+')')
   def ReplaceInteriorConst(match):
