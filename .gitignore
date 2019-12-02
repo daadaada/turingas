@@ -2,3 +2,9 @@
 /build/
 /dist/
 /turingas.egg-info/
+
+# sass folder
+/turingas/sass/
+
+# Python cache files
+/turingas/__pycache__/

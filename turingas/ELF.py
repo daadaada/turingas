@@ -63,7 +63,7 @@ class Header():
     self.ident     = None
     self.type      = 2 # EXEC
     self.machine   = 190 # CUDA
-    self.version   = 100 # CUDA version
+    self.version   = 101 # CUDA version
     self.entry     = 0 # Always 0 for cubin
     self.phoff     = 0
     self.shoff     = 0

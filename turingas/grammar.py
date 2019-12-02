@@ -43,6 +43,7 @@ ldgp  = fr'(?:(?:(?P<ldgp>{p}),?)|(?P<noldgp>))'
 sr = r'(?P<sr>\S+)'
 X  = r'(?P<x>\.X)?'
 bar = fr'(?P<ibar>(?:{immed}))'
+bra = r'(?P<u>\.U)?'
 
 # Helpers to get operand code.
 def GetP(value, shift):
@@ -128,6 +129,9 @@ boolOp = fr'(?P<boolOp>\.AND|\.XOR|\.OR)'
 imadType = fr'(?P<type>\.U32|\.S32)?'
 cmpType = fr'(?P<type>\.U32|\.S32)?'
 hmmaType = fr'(?P<type>\.F16|\.F32)'
+immaInfix = fr'(?P<infix>\.8816|\.8832)'
+immaT0 = fr'(?P<type0>\.U8|\.S8|\.U4|\.S4)'
+immaT1 = fr'(?P<type1>\.U8|\.S8|\.U4|\.S4)'
 shf  = fr'(?:(?P<lr>\.L|\.R)(?P<type>\.S32|\.U32|\.S64|\.U64)?(?P<hi>\.HI)?)'
 
 
@@ -173,11 +177,12 @@ grammar = {
   'FADD' : [{'code' : 0x221, 'rule' : rf'FADD {rd}, {rs0}, {fcrs1add};'}],
   'FMUL' : [{'code' : 0x220, 'rule' : rf'FMUL {rd}, {rs0}, {fcrs1};'}],
   # TensorCore instructions
-  'HMMA' : [{'code' : 0x23c, 'rule' : rf'HMMA.1688{hmmaType} {rd}, {rs0}, {rs1}, {rs2};'},],
+  'HMMA' : [{'code' : 0x23c, 'rule' : rf'HMMA\.1688{hmmaType} {rd}, {rs0}, {rs1}, {rs2};'},],
             # {'code' : 0x236, 'rule' : rf'HMMA.884.'}],
-  # 'IMMA' : [],
+  'IMMA' : [{'code' : 0x237, 'rule' : rf'IMMA{immaInfix}{immaT0}{immaT1} {rd}, {rs0}\.ROW, {rs1}(?P<s1col>\.COL), {rs2};'},],
+  'BMMA' : [{'code' : 0x23d, 'rule' : rf'BMMA\.88128(?P<bmma>\.POPC) {rd}, {rs0}\.ROW, {rs1}(?P<s1col>\.COL), {rs2};'},],
   # Control instructions
-  'BRA'  : [{'code' : 0x947, 'rule' : rf'BRA {cp}{is1};', 'lat' : 7}], # Lat?
+  'BRA'  : [{'code' : 0x947, 'rule' : rf'BRA((?P<bra>\.U))? {cp}{is1};', 'lat' : 7}], # Lat?
   'EXIT' : [{'code' : 0x94d, 'rule' : rf'EXIT\s*{cp};'}], 
   # Miscellaneous instructions.
   'CS2R' : [{'code' : 0x805, 'rule' : fr'CS2R {rd}, {sr};', 'lat' : 5}],
@@ -309,6 +314,31 @@ FADD, IADD3: rs0neg
 HMMA: type
 0<<0 .F16
 1<<12 .F32
+
+IMMA: type0
+0<<12 .U8
+0<<12 .U4
+1<<12 .S8
+1<<12 .S4
+
+IMMA: type1
+0<<14 .U8
+0<<14 .U4
+1<<14 .S8
+1<<14 .S4
+
+IMMA: infix
+0<<16 .8816
+56<<16 .8832
+
+IMMA, BMMA: s1col
+1<<10 .COL
+
+BMMA: bmma
+1<<16 .POPC
+
+BRA: u
+1<<96 .U
 
 BAR: bar
 0<<0 .SYNC
@@ -468,9 +498,9 @@ def GenCode(op, gram, captured_dict, asm_line):
     code |= 0xf00
   if op == 'ISETP':
     code |= 0x7 << 4
-  if op == 'LEA':
-    # code |= 0x1 << 0 
-    pass
+  if op == 'BRA':
+    code |= 0x1 << 96
+
 
   return code
 

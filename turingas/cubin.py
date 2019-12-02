@@ -153,6 +153,16 @@ class Cubin():
     section.sh_type  = 1 # PROGBITS
     section.sh_info = self.sec_idx_dict[b'.text.'+name]
     section.sh_align = 4
+
+  def GenerateNvSmem(self, kernel, section, name, smem_size):
+    data = b'' # Not sure why all kernels have this section.
+    section.data     = data
+    section.sh_size  = smem_size 
+    section.name     = b'.nv.shared.' + name
+    section.sh_flags = 3 # SHF_ALLOC
+    section.sh_type  = 8 # NOBITS
+    section.sh_info = self.sec_idx_dict[b'.text.'+name]
+    section.sh_align = 0x10
     
   def GenerateText(self, kernel, section, name):
     data = b''
@@ -210,7 +220,8 @@ class Cubin():
     current_offset += Header.HEADER_SIZE
     for sec in self.sections:
       sec.sh_offset = current_offset
-      current_offset += sec.sh_size
+      if sec.sh_type != 8:
+        current_offset += sec.sh_size
     self.header.shoff = current_offset
     self.header.shnum = len(self.sections)
     current_offset += Section.HEADER_SIZE * len(self.sections)
@@ -258,6 +269,7 @@ class Cubin():
 
     if kernel['SmemSize'] > 0:
       _nv_smem_kernel = Section()
+      self.sections.append(_nv_smem_kernel)
       self.sec_idx_dict[b'.nv.shared.'+name] = self.sec_idx
       self.sec_idx += 1 
 
@@ -313,7 +325,7 @@ class Cubin():
     self.GenerateText(kernel, _text_kernel, name)
     # Add .nv.shared.name
     if kernel['SmemSize'] > 0:
-      pass
+      self.GenerateNvSmem(kernel, _nv_smem_kernel, name, kernel['SmemSize'])   
 
     ########################
     # Update shstrtab/strtab

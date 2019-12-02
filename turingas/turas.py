@@ -40,6 +40,15 @@ def Assemble(file, include=None):
   branches = [] # Keep track of branch instructions (BRA)
   line_num = 0
 
+  def GetSmemSize(file):
+    smem_re = re.compile(r'^[\t ]*<SMEM>(.*?)\s*</SMEM>\n?', re.S | re.M | re.IGNORECASE)
+    match = smem_re.search(file)
+    if match:
+      return smem_re.sub(r'', file), int(match.group(1))
+    else:
+      return file, 0
+  file, smem_size = GetSmemSize(file)
+
   instructions = []
   for file_line_num, line in enumerate(file.split('\n')): # TODO: 
     if line == '':
@@ -127,6 +136,7 @@ def Assemble(file, include=None):
   # TODO: For some reasons, we need larger register count.
   if num_registers > 8:
     num_registers += 2
+
 
 
   return {
