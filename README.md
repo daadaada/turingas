@@ -28,7 +28,7 @@ python -m turingas.main -i input.sass -o output.cubin -arch 75 # 75 for Turing
 ```
 
 ## Citation
-If you find this tool helpful. Please cite:
+If you find this tool helpful, please cite:
 ```
 @inproceedings{winograd2020ppopp,
   author    = {Da Yan and
