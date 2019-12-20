@@ -76,6 +76,10 @@ class Cubin():
 
   def GenerateNvInfo(self, section, name):
     data = b''
+
+    # FIXME (JO): There is apparently an EIATTR_REGCOUNT data entry in the .nv.info section. 
+    # It is missing here.
+
     # Entry size: 12. (bbhll) (BB, 2B, 4B, 4B)
     # EIATTR_MAX_STACK_SIZE (0x0423)
     kernel_symtab_idx = self.sym_idx_dict[name]  # TODO: Why?
@@ -84,7 +88,7 @@ class Cubin():
 
     # EIATTR_MIN_STACK_SIZE (0x0412)
     MIN_STACK_SIZE = 0
-    data += pack('<bbhll', 0x4, 0x12, 0x8, kernel_symtab_idx, MAX_STACK_SIZE)
+    data += pack('<bbhll', 0x4, 0x12, 0x8, kernel_symtab_idx, MIN_STACK_SIZE)
 
     # EIATTR_FRAME_SIZE (0x0411)
     FRAME_SIZE = 0
@@ -140,6 +144,7 @@ class Cubin():
     section.sh_info = self.sec_idx_dict[b'.text.'+name]
     section.sh_align = 4
 
+# FIXME (JO): Currently not able to generate .nv.constant3
 
   def GenerateNvConst(self, kernel, section, name, params):
     # FIXME: size = 0x160 + sizeof(params)

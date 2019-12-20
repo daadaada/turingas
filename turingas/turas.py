@@ -107,7 +107,9 @@ def Assemble(file, include=None):
       print(repr(gram))
       raise Exception(f'Cannot recognize instruction {op+rest}')
 
-    # Update register count
+    # FIXME (JO): Not all instructions use only 1 register. This part did not take that into account.
+
+     # Update register count
     for reg in ['rd', 'rs0', 'rs1', 'rs2']:
       if reg not in result.groupdict():
         continue
