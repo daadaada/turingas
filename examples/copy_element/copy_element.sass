@@ -1,0 +1,18 @@
+<params>
+input, 8 # parameter_name, size
+output, 8
+</params>
+
+<regs>
+0-3 : input_0, input_1, output_0, output_1
+4 : tmp
+<regs>
+
+--:-:-:-:2     MOV input_0, input[0];
+--:-:-:-:2     MOV input_1, input[1];
+--:-:-:-:2     MOV output_0, output[0];
+--:-:-:-:2     MOV output_1, output[1];
+
+--:-:1:-:2     LDG.E tmp, [input_0];
+02:-:-:-:2     STG.E [output_0], tmp;
+--:-:-:-:2     EXIT;
