@@ -9,20 +9,22 @@ int main() {
   int * input_d;
   int * output_d;
 
-  input  = (int*)malloc(sizeof(int));
-  output = (int*)malloc(sizeof(int));
+  input  = (int*)malloc(2*sizeof(int));
+  output = (int*)malloc(2*sizeof(int));
 
   input[0] = 10;
+  input[1] = 20;
   output[0] = 0;
+  output[1] = 0;
 
 	cout << "Before the copy kernel." << endl;
-	cout << "Input value:\t" << input[0] << endl;
-  cout << "Output value:\t" << (uint)output[0] << endl;
+	cout << "Input value:\t" << input[0] << "\t" << input[1] << endl;
+  cout << "Output value:\t" << output[0] << "\t" << output[1] << endl;
 
-  cudaMalloc((void**)&input_d,  sizeof(int));
-  cudaMalloc((void**)&output_d, sizeof(int));
+  cudaMalloc((void**)&input_d,  2*sizeof(int));
+  cudaMalloc((void**)&output_d, 2*sizeof(int));
 
-  cudaMemcpy(input_d, input, sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(input_d, input, 2*sizeof(int), cudaMemcpyHostToDevice);
   
   CUmodule module;
   CUfunction kernel;
@@ -36,12 +38,12 @@ int main() {
                  0, 0, args, 0);
   cudaDeviceSynchronize();
 
-  cudaMemcpy(output, output_d, sizeof(int), cudaMemcpyDeviceToHost);
-  cudaMemcpy(input, input_d, sizeof(int), cudaMemcpyDeviceToHost);
+  cudaMemcpy(output, output_d, 2*sizeof(int), cudaMemcpyDeviceToHost);
+  cudaMemcpy(input, input_d, 2*sizeof(int), cudaMemcpyDeviceToHost);
 
 	cout << "After the copy kernel." << endl;
-	cout << "Input value:\t" << input[0] << endl;
-  cout << "Output value:\t" << output[0] << endl;
+	cout << "Input value:\t" << input[0] << "\t" << input[1] << endl;
+  cout << "Output value:\t" << output[0] << "\t" << output[1] << endl;
 
 
   return 0;

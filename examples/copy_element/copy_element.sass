@@ -5,7 +5,7 @@ output, 8
 
 <regs>
 0-3 : input_0, input_1, output_0, output_1
-4 : tmp
+4, 5 : tmp, size_int
 </regs>
 
 --:-:-:-:2     MOV input_0, input[0];
@@ -14,5 +14,12 @@ output, 8
 --:-:-:-:2     MOV output_1, output[1];
 
 --:-:1:-:2     LDG.E tmp, [input_0];
+02:-:-:-:2     STG.E [output_0], tmp;
+
+--:-:-:-:5     MOV size_int, 4;
+
+--:-:-:-:8     IMAD.WIDE input_0, size_int, 1, input_0;
+--:-:1:-:2     LDG.E tmp, [input_0];
+--:-:-:-:8     IMAD.WIDE output_0, size_int, 1, output_0;
 02:-:-:-:2     STG.E [output_0], tmp;
 --:-:-:-:2     EXIT;
