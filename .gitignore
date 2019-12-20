@@ -8,3 +8,4 @@
 
 # Python cache files
 /turingas/__pycache__/
+*.pyc
