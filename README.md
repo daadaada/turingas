@@ -29,7 +29,9 @@ python -m turingas.main -i input.sass -o output.cubin -arch 75 # 75 for Turing
 
 ## Related projects
 [AsFermi](https://github.com/hyqneuron/asfermi), an SASS assembler for NVIDIA Fermi GPUs. By Hou Yunqing.
+
 [MaxAs](https://github.com/NervanaSystems/maxas), an SASS assembler for NVIDIA Maxwell and Pascal. By Scott Gray.
+
 [KeplerAs](https://github.com/PAA-NCIC/PPoPP2017_artifact), an SASS assembler for NVIDIA Kepler. By Xiuxia Zhang.
 
 
@@ -43,6 +45,8 @@ To support following instructions:
 - [ ] LDSM # Load matrix from shared memory.
 - [ ] Texture instructions
 - [ ] Surface instructions
+- [ ] Unified data path instructions 
+- [ ] Ohter (ISCADD, CALL, JMP ...)
 
 ## Citation
 If you find this tool helpful, please cite:
@@ -61,4 +65,4 @@ If you find this tool helpful, please cite:
 
 This project is released under the MIT License.
 
--- Da Yan @ HKUST
+-- Da Yan @ HKUST 2019-2020
