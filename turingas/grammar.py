@@ -169,13 +169,12 @@ grammar = {
   'PRMT'  : [{'code' : 0x216, 'rule' : rf'PRMT {rd}, {rs0}, {icrs1}, {rs2};', 'lat': 5}],
 
   # Float instructions
-  # TODO: FFMA, FADD, FMUL
   'FFMA' : [{'code' : 0x223, 'rule' : rf'FFMA {rd}, {rs0}, {fcrs1}, {rs2};'}, 
             {'code' : 0x223, 'rule' : rf'FFMA {rd}, {rs0}, {rs2}, {fc2};'}],
   # FADD has its own rule. 
-  # TODO: Add flags for them. Especially for FMUL.
   'FADD' : [{'code' : 0x221, 'rule' : rf'FADD {rd}, {rs0}, {fcrs1add};'}],
   'FMUL' : [{'code' : 0x220, 'rule' : rf'FMUL {rd}, {rs0}, {fcrs1};'}],
+  'FMNMX': [{'code' : 0x209, 'rule' : rf'FMNMX {rd}, {rs0}, {rs1}, {ps0};'}], # ps0=PT:fmin
   # TensorCore instructions
   'HMMA' : [{'code' : 0x23c, 'rule' : rf'HMMA\.1688{hmmaType} {rd}, {rs0}, {rs1}, {rs2};'},],
             # {'code' : 0x236, 'rule' : rf'HMMA.884.'}],
