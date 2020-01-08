@@ -37,11 +37,8 @@ python -m turingas.main -i input.sass -o output.cubin -arch 75 # 75 for Turing
 
 ## TODO list
 To support following instructions:
-- [ ] I2I
-- [ ] I2F
-- [ ] F2I
-- [ ] F2F
-- [ ] MUFU # Multifunction. E.g., sin, cos.
+- [ ] Type conversion instructions (I2I, I2F, F2I, F2F)
+- [X] MUFU # Multifunction. E.g., sin, cos.
 - [ ] LDSM # Load matrix from shared memory.
 - [ ] Texture instructions
 - [ ] Surface instructions

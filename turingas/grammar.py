@@ -39,7 +39,6 @@ fcrs1 = fr'(?:(?:{fs1})|(?:{cs1})|(?:{rs1}))'
 fcrs1add = fr'(?:(?:{fs1add})|(?:{cs1add})|(?:{rs1}))'
 cp    = fr'(?:(?:(?P<cp>{p}),?)|(?P<nocp>))' # CP: control instructions predicate
 ldgp  = fr'(?:(?:(?P<ldgp>{p}),?)|(?P<noldgp>))'
-# ?
 sr = r'(?P<sr>\S+)'
 X  = r'(?P<x>\.X)?'
 bar = fr'(?P<ibar>(?:{immed}))'
@@ -63,14 +62,12 @@ def GetI(value, shift, mask=0xffffffff):
   return (value & mask) << shift
 
 def GetF(value, shift):
-  # FIXME
   value = float(value)
   # A trick to manipulate bits of float
   value = unpack('i', pack('f', value))[0]
   return value << shift
 
 def GetR(value, shift):
-  # FIXME
   result = re.match(r'^R(\d+|Z)$', value)
   if result == None:
     raise Exception(f'Bad register name: {value}\n')
@@ -83,7 +80,6 @@ def GetR(value, shift):
   return value << shift
 
 def GetC(value, shift):
-  # FIXME
   value = int(value, 0)
   return (value << shift) << 6 # Why?
 
@@ -124,6 +120,7 @@ memScope = fr'(?P<scope>\.CTA|\.GPU|\.SYS)?'
 memStrong = fr'(?P<strong>\.CONSTANT|\.WEEK|\.STRONG)?'
 
 # Options
+mufu = fr'(?P<mufu>\.COS|\.SIN|\.EX2|\.LG2|\.RCP|\.RSQ|\.RCP64H|\.RSQ64H|\.SQRT)'
 icmp = fr'(?P<cmp>\.EQ|\.NE|\.LT|\.GT|\.GE|\.LE)'
 boolOp = fr'(?P<boolOp>\.AND|\.XOR|\.OR)'
 imadType = fr'(?P<type>\.U32|\.S32)?'
@@ -171,6 +168,7 @@ grammar = {
   # Float instructions
   'FFMA' : [{'code' : 0x223, 'rule' : rf'FFMA {rd}, {rs0}, {fcrs1}, {rs2};'}, 
             {'code' : 0x223, 'rule' : rf'FFMA {rd}, {rs0}, {rs2}, {fc2};'}],
+  'MUFU' : [{'code' : 0x308, 'rule' : rf'MUFU{mufu} {rd}, {fcrs1};'},],
   # FADD has its own rule. 
   'FADD' : [{'code' : 0x221, 'rule' : rf'FADD {rd}, {rs0}, {fcrs1add};'}],
   'FMUL' : [{'code' : 0x220, 'rule' : rf'FMUL {rd}, {rs0}, {fcrs1};'}],
@@ -309,6 +307,17 @@ FADD, IADD3: rs1neg
 
 FADD, IADD3: rs0neg
 1<<8 -
+
+MUFU: mufu
+0<<10 .COS
+1<<10 .SIN
+2<<10 .EX2
+3<<10 .LG2
+4<<10 .RCP
+5<<10 .RSQ
+6<<10 .RCP64H
+7<<10 .RSQ64H
+8<<10 .SQRT
 
 HMMA: type
 0<<0 .F16
