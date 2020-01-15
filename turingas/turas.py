@@ -264,7 +264,7 @@ def ReplaceRegParamMap(file, reg_map, param_dict):
   for key in reg_map.keys():
     if key in param_dict['name_list']:
       raise Exception(f'Name {key} defined both in register and parameters.\n')
-  var_re = re.compile(fr'(?<!(?:\.))\b([a-zA-Z_]\w*)(?:\[(\d)\]|\b)(?!\[0x)')
+  var_re = re.compile(fr'(?<!(?:\.))\b([a-zA-Z_]\w*)(?:\[(\d+)\]|\b)(?!\[0x)')
   def ReplaceVar(match, regs, params):
     var = match.group(1)
     offset = match.group(2)

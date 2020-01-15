@@ -376,11 +376,11 @@ for line in flag_str.split('\n'):
 
 
 
-ctrl_re = r'(?P<ctrl>[0-9a-fA-F\-]{2}:[1-6\-]:[1-6\-]:[\-yY]:[0-9a-fA-F])'
+ctrl_re = r'(?P<ctrl>[0-9a-fA-F\-]{2}:[1-6\-]:[1-6\-]:[\-yY]:[0-9a-fA-F\-])'
 pred_re = r'(?P<pred>@(?P<predNot>!)?P(?P<predReg>\d)\s+)'
 inst_re = fr'{pred_re}?(?P<op>\w+)(?P<rest>[^;]*;)'
 
-def ReadCtrl(ctrl):
+def ReadCtrl(ctrl, gram):
   # Input should be '--:-:-:-:2'
   # Return a bitstring/hex.
   # Not include reuse flag.
@@ -389,8 +389,13 @@ def ReadCtrl(ctrl):
   readb = 7 if readb == '-' else int(readb)
   wrtdb = 7 if wrtdb == '-' else int(wrtdb)
   yield_ = 0 if yield_ == 'y' or yield_ == 'Y' else 1
-  stall = int(stall, 16)
-
+  try: 
+    stall = int(stall, 16)
+  except ValueError:
+    if 'lat' in gram:
+      stall = gram['lat']
+    else:
+      stall = 2 # 2 is the minimum pipeline stall
   return stall | yield_ << 4 | wrtdb << 5 | readb << 8 | watdb << 11
 
 def GenReuse(captured_dict):
@@ -490,7 +495,7 @@ def GenCode(op, gram, captured_dict, asm_line):
       code |= operands[key](value)
     
   # Control flag.
-  code |= ReadCtrl(asm_line['ctrl']) << 41
+  code |= ReadCtrl(asm_line['ctrl'], gram) << 41
 
   # TODO: Ideally, they should be deleted. (For what ever reason, they exist.)
   # End rules.
@@ -498,8 +503,8 @@ def GenCode(op, gram, captured_dict, asm_line):
     code |= 0xf00
   if op == 'ISETP':
     code |= 0x7 << 4
-  if op == 'BRA':
-    code |= 0x1 << 96
+  # if op == 'BRA':
+  #  code |= 0x1 << 96
 
 
   return code
