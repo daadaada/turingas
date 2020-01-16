@@ -22,13 +22,14 @@ def main():
     file = ExpandInline(file, args.include)
     file, regs   = SetRegisterMap(file)
     file, params = SetParameterMap(file)
+    file, consts = SetConstsMap(file)
     # TODO: replace registers; replace params.
-    file   = ReplaceRegParamMap(file, regs, params)
+    file   = ReplaceRegParamConstMap(file, regs, params, consts)
     kernel = Assemble(file)
 
   # Write out cubin file
   cubin = Cubin(arch=args.arch)
-  cubin.AddKernel(kernel, b'kern', params['size_list']) 
+  cubin.AddKernel(kernel, b'kern', params, consts) 
   cubin.Write(args.output_cubin)
 
 
