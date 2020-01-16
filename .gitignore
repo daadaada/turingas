@@ -11,3 +11,6 @@
 *.pyc
 *.cubin
 *.out
+
+# other
+*.swp

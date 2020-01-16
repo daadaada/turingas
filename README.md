@@ -3,7 +3,7 @@ An open source SASS assembler for NVIDIA Volta and Turing GPUs.
 
 
 ## Requirements:
-* Pyhthon >= 3.6
+* Python >= 3.6
 
 
 ## Supported hardware:
@@ -43,12 +43,12 @@ To support following instructions:
 - [ ] Texture instructions
 - [ ] Surface instructions
 - [ ] Unified data path instructions 
-- [ ] Ohter (ISCADD, CALL, JMP ...)
+- [ ] Other (ISCADD, CALL, JMP ...)
 
 ## Citation
 If you find this tool helpful, please cite:
 ```
-@inproceedings{winograd2020ppopp,
+@inproceedings{da2020winograd-conv,
   author    = {Da Yan and
                Wei Wang and
                Xiaowen Chu},
@@ -62,4 +62,4 @@ If you find this tool helpful, please cite:
 
 This project is released under the MIT License.
 
--- Da Yan @ HKUST 2019-2020
+-- Da Yan
