@@ -405,7 +405,7 @@ def ReadCtrl(ctrl, gram):
     if 'lat' in gram:
       stall = gram['lat']
     else:
-      stall = 2 # 2 is the minimum pipeline stall
+      stall = 1 # 1 is the minimum pipeline stall
   return stall | yield_ << 4 | wrtdb << 5 | readb << 8 | watdb << 11
 
 def GenReuse(captured_dict):

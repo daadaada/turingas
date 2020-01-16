@@ -23,7 +23,6 @@ def main():
     file, regs   = SetRegisterMap(file)
     file, params = SetParameterMap(file)
     file, consts = SetConstsMap(file)
-    # TODO: replace registers; replace params.
     file   = ReplaceRegParamConstMap(file, regs, params, consts)
     kernel = Assemble(file)
 
