@@ -99,6 +99,8 @@ operands = {
   'ibar': lambda value : GetI(value, 118, 0xff),
   'cs1' : lambda value : GetC(value, 96),
   'cs1add' : lambda value : GetC(value, 96),
+  'c34' : lambda value : GetC(value, 112), 
+  'c35' : lambda value : GetC(value, 112), 
   'rs2' : lambda value : GetR(value,  0),
   'is2' : lambda value : GetI(value, 96),
   'cs2' : lambda value : GetC(value, 96),

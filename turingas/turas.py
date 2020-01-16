@@ -156,6 +156,7 @@ def Assemble(file, include=None):
     
 register_map_re = re.compile(r'^[\t ]*<REGS>(.*?)\s*</REGS>\n?', re.S | re.M | re.IGNORECASE)
 parameter_map_re = re.compile(r'^[\t ]*<PARAMS>(.*?)^\s*</PARAMS>\n?', re.S | re.M | re.IGNORECASE)
+constant_map_re = re.compile(r'^[\t ]*<CONSTS>(.*?)^\s*</CONSTS>\n?', re.S | re.M | re.IGNORECASE)
 def SetRegisterMap(file):
   # <regs>
   # 0, 1, 2, 3 : a0, a1, a2, a3
@@ -213,7 +214,6 @@ def SetRegisterMap(file):
   file = register_map_re.sub('', file)
 
   return file, reg_map
-
 def SetParameterMap(file):
   '''
   <PARAMS>
@@ -221,6 +221,7 @@ def SetParameterMap(file):
   output, 8
   </PARAMS>
   '''
+  
   name_list = []
   size_list = []
   # Cannot use dict. Order information is needed.
@@ -249,40 +250,82 @@ def SetParameterMap(file):
 
   return file, param_dict
 
-def GetParameterConstant(param_name, params, para_offset=0):
-  base = 0x160 # TODO: Better to be a global variable. (Cubin also needs this.)
-  index = params['name_list'].index(param_name) # Use .index() is safe here. Elements are unique.
-  prefix_sum = list(accumulate(params['size_list']))
-  size = params['size_list'][index]
-  offset = prefix_sum[index] - size + para_offset * 4# :)
-  if size - para_offset*4 < 0:
-    raise Exception(f'Parameter {param_name} is of size {size}. Cannot have offset {para_offset}.')
-  return 'c[0x0][' + '0x%0.3X' % (base+offset) + ']'
+def SetConstsMap(file):
+  '''
+  <CONSTS>
+  CONST_A,  8
+  CONST_B, 8
+  </CONSTS>
+  '''
+  name_list = []
+  size_list = []
+  # Cannot use dict. Order information is needed.
+  const_dict = {'name_list' : name_list, 'size_list' : size_list}
+  constmap_result = constant_map_re.findall(file)
+  for match_item in constmap_result:
+    for line_num, line in enumerate(match_item.split('\n')):
+      # Replace commands and space
+      line = re.sub(r'#.*', '', line)
+      line = re.sub(r'\s*', '', line)
+      if line == '':
+        continue
+      name, size = line.split(',')
+      if name in name_list:
+        raise Exception(f'Constant name {name} already defined.\n')
+      if not re.match(r'\w+', name):
+        raise Exception(f'Invalid Constant name {name}, at line {line_num+1}.\n')
+      size = int(size)
+      if size % 4 != 0:
+        raise Exception(f'Size of Constant {name} is not a multiplication of 4. Not supported.\n')
+      name_list.append(name)
+      size_list.append(size)
+  
+  # Delete parameter text.
+  file = constant_map_re.sub('', file)
+
+  return file, const_dict
+
+def GetParameterConstant(var_name, var_dict, bank, base, offset=0):
+  index = var_dict['name_list'].index(var_name) # Use .index() is safe here. Elements are unique.
+  prefix_sum = list(accumulate(var_dict['size_list']))
+  size = var_dict['size_list'][index]
+  
+  if size - offset*4 < 0:
+    raise Exception(f'Parameter {var_name} is of size {size}. Cannot have offset {offset}.')
+
+  offset = prefix_sum[index] - size + offset * 4# FIXME: Currently we assume elements of all arrays are 4 Bytes in size.
+  
+  return 'c[0x{:x}]['.format(bank) + '0x{:x}'.format(base + offset) + ']'
 
 # Replace register and parameter.
-def ReplaceRegParamMap(file, reg_map, param_dict):
+def ReplaceRegParamConstMap(file, reg_map, param_dict, const_dict):
   for key in reg_map.keys():
     if key in param_dict['name_list']:
       raise Exception(f'Name {key} defined both in register and parameters.\n')
+    if key in const_dict['name_list']:
+      raise Exception(f'Name {key} defined both in register and constants.\n')
   var_re = re.compile(fr'(?<!(?:\.))\b([a-zA-Z_]\w*)(?:\[(\d+)\]|\b)(?!\[0x)')
-  def ReplaceVar(match, regs, params):
+  def ReplaceVar(match, regs, params, consts):
     var = match.group(1)
     offset = match.group(2)
+    try: 
+      offset = int(offset)
+    except (ValueError, TypeError):
+      offset = 0
+
     if var in grammar:
       return var
     if var in reg_map:
       return 'R' + str(reg_map[var])
     if var in params['name_list']:
-      if offset == None:
-        return GetParameterConstant(var, params)
-      else:
-        offset = int(offset)
-        return GetParameterConstant(var, params, offset)
+      return GetParameterConstant(var, params, 0, 0x160, offset)
+    if var in consts['name_list']:
+      return GetParameterConstant(var, consts, 3, 0x0, offset)
     else:
       # TODO: Or not to allow use RX in the code and raise exeception here.
       return var # In case of R0-R255, RZ, PR
   # Match rest first.
-  file = var_re.sub(lambda match : ReplaceVar(match, reg_map, param_dict), file)
+  file = var_re.sub(lambda match : ReplaceVar(match, reg_map, param_dict, const_dict), file)
 
   # Replace interior constant map
   constants = {
@@ -339,4 +382,4 @@ if __name__ == '__main__':
 --:-:-:-:2    STG.E.SYS [R2], R2;
 --:-:-:-:2    STG.E.SYS [R2+4], R3;
 --:-:-:-:2    EXIT;'''
-  ReplaceRegParamMap(input_str)
+  # ReplaceRegParamConstMap(input_str)
