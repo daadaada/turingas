@@ -167,6 +167,11 @@ grammar = {
   'SHF'   : [{'code' : 0x219, 'rule' : rf'SHF{shf} {rd}, {rs0}, {icrs1}, {rs2};', 'lat' : 5}], # Somethings 4. st. 5.
   'PRMT'  : [{'code' : 0x216, 'rule' : rf'PRMT {rd}, {rs0}, {icrs1}, {rs2};', 'lat': 5}],
 
+  # Half instructions
+  'HADD2' : [{'code' : 0x230, 'rule' : rf'HADD2 {rd}, {rs0}, {rs1};'}, 'lat' : 7],
+  'HFMA2' : [{'code' : 0x231, 'rule' : rf'HFMA2 {rd}, {rs0}, {rs1}, {rs2};'}, 'lat' : 7],
+  'HMUL2' : [{'code' : 0x232, 'rule' : rf'HMUL2 {rd}, {rs0}, {rs1};'}, 'lat' : 7],
+
   # Float instructions
   'FFMA' : [{'code' : 0x223, 'rule' : rf'FFMA {rd}, {rs0}, {fcrs1}, {rs2};'}, 
             {'code' : 0x223, 'rule' : rf'FFMA {rd}, {rs0}, {rs2}, {fc2};'}],
