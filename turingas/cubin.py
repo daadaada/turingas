@@ -325,16 +325,13 @@ class Cubin():
       # Taking alignment into consideration
       misalign_bytes = current_offset & (sec.sh_align - 1)
       if misalign_bytes != 0:
-        print(misalign_bytes)
         current_offset = (current_offset & ~(sec.sh_align - 1)) + sec.sh_align
-        print(current_offset)
         prev_sec.data += (b'\x00' * (sec.sh_align - misalign_bytes))
 
       sec.sh_offset = current_offset
       if sec.sh_type != 8:
         current_offset += sec.sh_size
       
-      print(i, sec.sh_offset, sec.sh_align, sec.sh_size)
       prev_sec = sec
   
     self.header.shoff = current_offset
