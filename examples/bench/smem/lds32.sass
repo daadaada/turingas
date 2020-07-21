@@ -1,0 +1,35 @@
+<params>
+output, 8
+</params>
+
+<regs>
+0-16 ~ output0, output1, tid, offset, target, start, end, iter
+</regs>
+
+--:-:1:-:5    S2R tid, SR_TID.X;
+--:-:-:-:2    MOV output0, output[0];
+--:-:-:-:5    MOV output1, output[1];
+02:-:-:-:6    SHF.L offset, tid, 2, RZ;
+--:-:-:-:5    MOV iter, RZ;
+--:-:-:-:1    CS2R start, SR_CLOCKLO;
+
+LOOP:
+<code>
+out = []
+out.append('--:-:-:-:1    IADD3 iter, iter, 1, RZ;')
+for i in range(128):
+  if i == 64:
+    out.append(f'--:-:-:-:1    ISETP.LT.AND P0, PT, iter, 128, PT;')
+  out.append(f'--:-:-:-:1    LDS target, [offset];')
+out.append('--:-:-:-:2  @P0  BRA LOOP;')
+out_ = '\n'.join(out) + '\n'
+</code>
+
+--:-:-:-:5    CS2R end, SR_CLOCKLO;
+--:-:-:-:5    IADD3 end, end, -start, RZ;
+--:-:-:-:2    STG.E.GPU [output0], end;
+
+
+
+
+--:-:-:-:2    EXIT;
