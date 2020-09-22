@@ -7,7 +7,7 @@ def main():
   parser.add_argument('-i', '--input', help='input asm file', dest='input_asm', required=True, metavar='FILE')
   parser.add_argument('-o', '--output', help='output cubin file', dest='output_cubin', required=True, metavar='FILE')
   parser.add_argument('-inc', '--include', help='include files', nargs='+')
-  parser.add_argument('-arch', dest='arch', default=75, type=int)
+  parser.add_argument('-arch', dest='arch', default=75, type=int, choices=[70, 75, 80])
   args = parser.parse_args()
 
 

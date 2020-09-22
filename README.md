@@ -7,7 +7,7 @@ An open source SASS assembler for NVIDIA Volta and Turing GPUs.
 
 
 ## Supported hardware:
-All NVIDIA Volta (SM70) and Turing (SM75) GPUs.
+All NVIDIA Volta (SM70), Turing (SM75), and Ampere (SM80) GPUs.
 
 ## Other features:
 * Include files.
@@ -25,6 +25,7 @@ python -m turingas.main -i <input.sass> -o <output.cubin> -arch <arch>
 
 # E.g.
 python -m turingas.main -i input.sass -o output.cubin -arch 75 # 75 for Turing
+                                                               # or 70 (Volta), 80 (Ampere)
 ```
 
 ## Related projects
@@ -44,11 +45,12 @@ To support following instructions:
 - [ ] Surface instructions
 - [ ] Unified data path instructions 
 - [ ] Other (ISCADD, CALL, JMP ...)
+- [ ] New Ampere instructions.
 
 ## Citation
 If you find this tool helpful, please cite:
 ```
-@inproceedings{da2020winograd-conv,
+@inproceedings{yan2020winograd-conv,
   author    = {Da Yan and
                Wei Wang and
                Xiaowen Chu},
