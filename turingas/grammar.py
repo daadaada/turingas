@@ -391,7 +391,7 @@ for line in flag_str.split('\n'):
 
 
 
-ctrl_re = r'(?P<ctrl>[0-9a-fA-F\-]{2}:[1-6\-]:[1-6\-]:[\-yY]:[0-9a-fA-F\-])'
+ctrl_re = r'(?P<ctrl>[0-9a-fA-F\-]{2}:[0-5\-]:[0-5\-]:[\-yY]:[0-9a-fA-F\-])'
 pred_re = r'(?P<pred>@(?P<predNot>!)?P(?P<predReg>\d)\s+)'
 inst_re = fr'{pred_re}?(?P<op>\w+)(?P<rest>[^;]*;)'
 

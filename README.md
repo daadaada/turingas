@@ -1,5 +1,5 @@
 # TuringAs
-An open source SASS assembler for NVIDIA Volta and Turing GPUs.
+An open source SASS assembler for NVIDIA Volta, Turing, and Ampere GPUs.
 
 
 ## Requirements:

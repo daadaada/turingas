@@ -3,4 +3,4 @@ all:
 	nvcc -arch=sm_75 main.cu -lcuda -o test
 
 clean:
-	lds32.cubin test
+	rm lds32.cubin test
