@@ -23,6 +23,9 @@ def parseCtrl(sline):
 
 def processSassLines(fline, sline):
   asm = FLINE_RE.match(fline).group(1)
+  # Remove tailing space 
+  if asm.endswith(" ;"):
+    asm = asm[:-2] + ";"
   ctrl = parseCtrl(sline)
   print(f'{ctrl}\t{asm}')
 
