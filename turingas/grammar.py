@@ -43,6 +43,9 @@ sr = r'(?P<sr>\S+)'
 X  = r'(?P<x>\.X)?'
 bar = fr'(?P<ibar>(?:{immed}))'
 bra = r'(?P<u>\.U)?'
+# Special rules for mma884
+rs0mma884 = fr'{rs0}(?P<rs0layout>\.ROW|\.COL)'
+rs1mma884 = fr'{rs1}(?P<rs1layout>\.ROW|\.COL)'
 
 # Helpers to get operand code.
 def GetP(value, shift):
@@ -128,6 +131,7 @@ boolOp = fr'(?P<boolOp>\.AND|\.XOR|\.OR)'
 imadType = fr'(?P<type>\.U32|\.S32)?'
 cmpType = fr'(?P<type>\.U32|\.S32)?'
 hmmaType = fr'(?P<type>\.F16|\.F32)'
+mma884 = fr'(?P<dtype>\.F16|\.F32)(?P<ctype>\.F16|\.F32)(?P<step>\.STEP0|\.STEP1|\.STEP2|\.STEP3)'
 immaInfix = fr'(?P<infix>\.8816|\.8832)'
 immaT0 = fr'(?P<type0>\.U8|\.S8|\.U4|\.S4)'
 immaT1 = fr'(?P<type1>\.U8|\.S8|\.U4|\.S4)'
@@ -182,8 +186,8 @@ grammar = {
   'FMUL' : [{'code' : 0x220, 'rule' : rf'FMUL {rd}, {rs0}, {fcrs1};'}],
   'FMNMX': [{'code' : 0x209, 'rule' : rf'FMNMX {rd}, {rs0}, {rs1}, {ps0};'}], # ps0=PT:fmin
   # TensorCore instructions
-  'HMMA' : [{'code' : 0x23c, 'rule' : rf'HMMA\.1688{hmmaType} {rd}, {rs0}, {rs1}, {rs2};'},],
-            # {'code' : 0x236, 'rule' : rf'HMMA.884.'}],
+  'HMMA' : [{'code' : 0x23c, 'rule' : rf'HMMA\.1688{hmmaType} {rd}, {rs0}, {rs1}, {rs2};'},
+            {'code' : 0x236, 'rule' : rf'HMMA\.884{mma884} {rd}, {rs0mma884}, {rs1mma884}, {rs2};'}],
   'IMMA' : [{'code' : 0x237, 'rule' : rf'IMMA{immaInfix}{immaT0}{immaT1} {rd}, {rs0}\.ROW, {rs1}(?P<s1col>\.COL), {rs2};'},],
   'BMMA' : [{'code' : 0x23d, 'rule' : rf'BMMA\.88128(?P<bmma>\.POPC) {rd}, {rs0}\.ROW, {rs1}(?P<s1col>\.COL), {rs2};'},],
   # Control instructions
@@ -338,6 +342,28 @@ MUFU: mufu
 HMMA: type
 0<<0 .F16
 1<<12 .F32
+
+HMMA: rs0layout
+0<<9 .ROW
+1<<9 .COL
+
+HMMA: rs1layout
+0<<10 .ROW
+1<<10 .COL
+
+HMMA: dtype
+0<<12 .F16
+1<<12 .F32
+
+HMMA: ctype
+0<<14 .F16
+1<<14 .F32
+
+HMMA: step
+0<<15 .STEP0
+1<<15 .STEP1
+2<<15 .STEP2
+3<<15 .STEP3
 
 IMMA: type0
 0<<12 .U8
@@ -527,6 +553,8 @@ def GenCode(op, gram, captured_dict, asm_line):
     code |= 0xf00
   if op == 'ISETP':
     code |= 0x7 << 4
+  if op == 'LDC':
+    code |= 0xff << 88
   # if op == 'BRA':
   #  code |= 0x1 << 96
 
