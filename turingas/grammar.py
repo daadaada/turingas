@@ -112,7 +112,8 @@ operands = {
   'noldgp':lambda value: GetP('PT',  17),
   'pd0' : lambda value : GetP(value, 17),
   'pd1' : lambda value : GetP(value, 20),
-  'ps0' : lambda value : GetP(value, 23)
+  'ps0' : lambda value : GetP(value, 23),
+  'ps1' : lambda value : GetP(value, 13),
 }
 
 # Memory options
@@ -202,7 +203,9 @@ grammar = {
   'P2R' : [{'code' : 0x803, 'rule' : fr'P2R {rd}, (?P<pr>PR), {is1};', 'lat' : 8}],
   'R2P' : [{'code' : 0x804, 'rule' : fr'R2P PR, {rs0}, {is1};', 'lat' : 12}],
   # Shuffle
-  'SHFL' : [{'code' : 0x389, 'rule' : fr'SHFL{shfl} {rd}, {rs0}, {icrs1}, {irsc2};', 'lat' : 20}],
+  'SHFL' : [{'code' : 0x389, 'rule' : fr'SHFL{shfl} {rd}, {rs0}, {icrs1}, {rs2};', 'lat' : 20}],
+  # Conversion
+  'F2F' : [{'code' : 0x304, 'rule' : fr'F2F(?P<dtype>\.F16|\.F32)(?P<stype>\.F16|\.F32) {rd}, {rs1};', 'lat':5}],
 }
 
 
@@ -396,6 +399,12 @@ BAR: bar
 1<<14 .RED.POPC
 1<<15 .SYNCALL
 1<<16 .SYNC.DEFER_BLOCKING
+
+F2F: dtype
+1<<21 .F16
+
+F2F: stype
+1<<11 .F32
 '''
 
 # Create flag dict
