@@ -137,7 +137,7 @@ def Assemble(file, include=None):
 
   # TODO: For some reasons, we need larger register count.
   if num_registers > 8:
-    num_registers += 2
+    num_registers += 4
 
 
 
