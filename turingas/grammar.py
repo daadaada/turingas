@@ -132,6 +132,7 @@ immaInfix = fr'(?P<infix>\.8816|\.8832)'
 immaT0 = fr'(?P<type0>\.U8|\.S8|\.U4|\.S4)'
 immaT1 = fr'(?P<type1>\.U8|\.S8|\.U4|\.S4)'
 shf  = fr'(?:(?P<lr>\.L|\.R)(?P<type>\.S32|\.U32|\.S64|\.U64)?(?P<hi>\.HI)?)'
+shfl = fr'(?P<shfl>\.IDX|\.UP|\.DOWN|\.BFLY)'
 
 
 
@@ -195,7 +196,9 @@ grammar = {
   'BAR'  : [{'code' : 0xb1d, 'rule' : fr'BAR(?P<bar>\.SYNC|\.SYNC.DEFER_BLOCKING|) {bar};'}], 
   # Predicate instructions.
   'P2R' : [{'code' : 0x803, 'rule' : fr'P2R {rd}, (?P<pr>PR), {is1};', 'lat' : 8}],
-  'R2P' : [{'code' : 0x804, 'rule' : fr'R2P PR, {rs0}, {is1};', 'lat' : 12}]
+  'R2P' : [{'code' : 0x804, 'rule' : fr'R2P PR, {rs0}, {is1};', 'lat' : 12}],
+  # Shuffle
+  'SHFL' : [{'code' : 0x389, 'rule' : fr'SHFL{shfl} {rd}, {rs0}, {icrs1}, {irsc2};', 'lat' : 20}],
 }
 
 
@@ -289,6 +292,12 @@ SHF: type
 4<<8 .S32
 6<<8 .U32
 6<<8 DEFAULT
+
+SHFL: shfl
+0<<122 .IDX
+1<<122 .UP
+2<<122 .DOWN
+3<<122 >BFLY
 
 SHF, LEA: hi
 1<<16 .HI
