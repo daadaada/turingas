@@ -5,6 +5,7 @@ import re
 FLINE_RE = re.compile(r'\s*/\*\w{4}\*/\s*([^;]*;)\s*/\* 0x(\w{16}) \*/\s*')
 SLINE_RE = re.compile(r'\s*/\* 0x(\w{16}) \*/\s*')
 FNAME_RE = re.compile(r'\s*Function : (\w+)\s*')
+BRA_RE   = re.compile(r'(.*BRA )(0x\w+);')
 
 def parseCtrl(sline):
   enc = int(SLINE_RE.match(sline).group(1), 16)
@@ -21,13 +22,20 @@ def parseCtrl(sline):
   return f'{watdb_str}:{readb_str}:{wrtdb_str}:{yld_str}:{stall:x}'
 
 
-def processSassLines(fline, sline):
+def processSassLines(fline, sline, labels):
   asm = FLINE_RE.match(fline).group(1)
   # Remove tailing space 
   if asm.endswith(" ;"):
     asm = asm[:-2] + ";"
   ctrl = parseCtrl(sline)
-  print(f'{ctrl}\t{asm}')
+  # BRA target address
+  if BRA_RE.match(asm) != None:
+    target = int(BRA_RE.match(asm).group(2), 16)
+    if target in labels:
+      pass
+    else:
+      labels[target] = len(labels)
+  return (f'{ctrl}', f'{asm}')
 
 
 def extract(file_path):
@@ -42,7 +50,7 @@ def extract(file_path):
     # /*0000*/ asmstr /*0x...*/
     #                 /*0x...*/
     fname_match = FNAME_RE.match(line)
-    # New function
+    # Looking for new function header (function: <name>)
     while FNAME_RE.match(line) == None:
       line_idx += 1
       if line_idx < len(sass_lines):
@@ -54,15 +62,36 @@ def extract(file_path):
     print(f'Function:{fname}')
     line_idx += 2 # bypass .headerflags
     line = sass_lines[line_idx].decode()
-
+    # Remapping address to label
+    labels = {} # address -> label_idx
+    # store sass asm in buffer and them print them (for labels)
+    # (ctrl, asm)
+    asm_buffer = [] 
     while FLINE_RE.match(line) != None:
+      # First line (Offset ASM Encoding)
       fline = sass_lines[line_idx].decode()
       line_idx += 1
+      # Second line (Encoding)
       sline = sass_lines[line_idx].decode()
       line_idx += 1
-      instr_info = processSassLines(fline, sline)
+      asm_buffer.append(processSassLines(fline, sline, labels))
+      # peek the next line
       line = sass_lines[line_idx].decode()
-    # Not an instr line
+    # Print sass
+    # label naming convension: LBB#i 
+    for idx, (ctrl, asm) in enumerate(asm_buffer):
+      # Print label if this is BRA target
+      offset = idx * 16
+      if offset in labels:
+        label_name = f'LBB{labels[offset]}'
+        print(f'{label_name}:')
+      print(ctrl, end='\t')
+      # if this is BRA, remap offset to label
+      if BRA_RE.match(asm):
+        target = int(BRA_RE.match(asm).group(2), 16)
+        target_name = f'LBB{labels[target]}'
+        asm = BRA_RE.sub(rf'\1{target_name};', asm)
+      print(asm)
     print('\n')
 
 
