@@ -5,7 +5,7 @@ import re
 FLINE_RE = re.compile(r'\s*/\*\w{4}\*/\s*([^;]*;)\s*/\* 0x(\w{16}) \*/\s*')
 SLINE_RE = re.compile(r'\s*/\* 0x(\w{16}) \*/\s*')
 FNAME_RE = re.compile(r'\s*Function : (\w+)\s*')
-BRA_RE   = re.compile(r'(.*BRA )(0x\w+);')
+BRA_RE   = re.compile(r'(.*BRA(?:\.U) )(0x\w+);')
 
 def parseCtrl(sline):
   enc = int(SLINE_RE.match(sline).group(1), 16)
@@ -38,8 +38,11 @@ def processSassLines(fline, sline, labels):
   return (f'{ctrl}', f'{asm}')
 
 
-def extract(file_path):
-  sass_str = subprocess.check_output(["cuobjdump", "-sass", file_path])
+def extract(file_path, fun):
+  if fun == None:
+    sass_str = subprocess.check_output(["cuobjdump", "-sass", file_path])
+  else:
+    sass_str = subprocess.check_output(["cuobjdump", "-fun", fun, "-sass", file_path])
   sass_lines = sass_str.splitlines()
   line_idx = 0
   while line_idx < len(sass_lines):
@@ -98,5 +101,7 @@ def extract(file_path):
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description="nv disasm")
   parser.add_argument('file_path')
+  parser.add_argument('-fun', required=False, 
+    help='Specify names of device functions whose fat binary structures must be dumped.')
   args = parser.parse_args()
-  extract(args.file_path)
+  extract(args.file_path, args.fun)
