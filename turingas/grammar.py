@@ -277,7 +277,7 @@ CS2R: sr
 
 IMAD: type
 0<<0 .U32
-1<<0 DEFAULT
+1<<9 DEFAULT
 1<<9 .S32 
 # .U16
 # .S16
