@@ -156,9 +156,9 @@ grammar = {
   'STS' : [{'code' : 0x388, 'rule' : rf'STS{memType}{memCache} {addr24}, {rs1};'}],
   # Load matrix
   # TODO: UR offset
-  'LDSM' : [{'code' : 0x83b, 'rule' : rf'LDSM.16.M88{numMat} {rd}, {addr24};'}],
+  # 'LDSM' : [{'code' : 0x83b, 'rule' : rf'LDSM.16.M88{numMat} {rd}, {addr24};'}],
   # TODO: .ZFILL & UR offset
-  'LDGSTS' : ['code' : 0xfae, 'rule' : rf'LDGSTS{memType} {rd}, {addr24}, {rs0};'],
+  'LDGSTS' : [{'code' : 0xfae, 'rule' : rf'LDGSTS{memType} {rd}, {addr24}, {rs0};'}],
   # LDC has its own rule.
   'LDC' : [{'code' : 0xb82, 'rule' : rf'LDC{memType} {rd}, {cs1};'}], # Add register offset.
 
@@ -166,10 +166,11 @@ grammar = {
   'IADD3': [{'code' : 0x210, 'rule' : rf'IADD3{X} {rd}, {pd0i}{pd1i}{rs0}, {icrs1}, {rs2}{ps0i}{ps1i};', 'lat' : 4},
             {'code' : 0x210, 'rule' : rf'IADD3{X} {rd}, {pd0i}{pd1i}{rs0}, {rs2}, {ic2}{ps0i}{ps1i};'}],
   'IMUL' : [{'code' : 0x000, 'rule' : r'IMUL;'}],
-  'LEA'  : [{'code' : 0x211, 'rule' : rf'LEA(?P<hi>\.HI)?{X} {rd}, {pd0i}{rs0}, {icrs1}, {is11w5}{ps0i}{ps1i};'} ],
+  'LEA'  : [{'code' : 0x211, 'rule' : rf'LEA(?P<hi>\.HI)?{X} {rd}, {pd0i}{rs0}, {icrs1}, {is11w5}{ps0i}{ps1i};'},
+            {'code' : 0x211, 'rule' : rf'LEA(?P<hi>\.HI)?{X} {rd}, {pd0i}{rs0}, {icrs1}, {rs2}, {is11w5}{ps0i}{ps1i};'}],
   # Do not capture them () as flags. But treat them as different instructions.
-  'IMAD'  : [{'code' : 0x224, 'rule' : rf'IMAD{imadType} {rd}, {pd0i}{rs0}, {icrs1}, {rs2}{ps0i};', 'lat' : 5},
-             {'code' : 0x224, 'rule' : rf'IMAD{imadType} {rd}, {pd0i}{rs0}, {rs2}, {ic2}{ps0i};', 'lat' : 5}, 
+  'IMAD'  : [{'code' : 0x224, 'rule' : rf'IMAD{imadType}{X} {rd}, {pd0i}{rs0}, {icrs1}, {rs2}{ps0i};', 'lat' : 5},
+             {'code' : 0x224, 'rule' : rf'IMAD{imadType}{X} {rd}, {pd0i}{rs0}, {rs2}, {ic2}{ps0i};', 'lat' : 5}, 
              {'code' : 0x225, 'rule' : rf'IMAD.WIDE{imadType} {rd}, {pd0i}{rs0}, {icrs1}, {rs2}{ps0i};'}, 
              {'code' : 0x225, 'rule' : rf'IMAD.WIDE{imadType} {rd}, {pd0i}{rs0}, {rs2}, {ic2}{ps0i};'}, 
              # IMAD.HI is special. rs2 represent register after it. Must be even register.
@@ -179,6 +180,7 @@ grammar = {
   'SHF'   : [{'code' : 0x219, 'rule' : rf'SHF{shf} {rd}, {rs0}, {icrs1}, {rs2};', 'lat' : 5}], # Somethings 4. st. 5.
   'PRMT'  : [{'code' : 0x216, 'rule' : rf'PRMT {rd}, {rs0}, {icrs1}, {rs2};', 'lat': 5}],
   'SEL'   : [{'code' : 0x207, 'rule' : rf'SEL {rd}, {rs0}, {icrs1}, {ps0};'}],
+  'SGXT'  : [{'code' : 0x21a, 'rule' : rf'SGXT{imadType} {rd}, {rs0}, {icrs1};'}],
 
   # Half instructions
   'HADD2' : [{'code' : 0x230, 'rule' : rf'HADD2 {rd}, {rs0}, {rs1};', 'lat' : 7}],
@@ -219,7 +221,7 @@ grammar = {
   'ATOMS' : [{'code' : 0x38d, 'rule' : fr'ATOMS.CAS {rd}, {addr24}, {rs1}, {rs2};'},
              {'code' : 0x38c, 'rule' : fr'ATOMS{atomType} {rd}, {addr24}, {rs1};'}],
   'ATOMG' : [{'code' : 0x3a9, 'rule' : fr'ATOMG.CAS{memStrong}{memScope} {rd}, {addr24}, {rs1}, {rs2};'},
-              'code' : 0x3a8, 'rule' : fr'ATOMG.EXCH{memStrong}{memScope} {rd}, {addr24}, {rs1};'],
+              {'code' : 0x3a8, 'rule' : fr'ATOMG.EXCH{memStrong}{memScope} {rd}, {addr24}, {rs1};'}],
 }
 
 
