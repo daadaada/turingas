@@ -138,6 +138,7 @@ immaT0 = fr'(?P<type0>\.U8|\.S8|\.U4|\.S4)'
 immaT1 = fr'(?P<type1>\.U8|\.S8|\.U4|\.S4)'
 shf  = fr'(?:(?P<lr>\.L|\.R)(?P<type>\.S32|\.U32|\.S64|\.U64)?(?P<hi>\.HI)?)'
 shfl = fr'(?P<shfl>\.IDX|\.UP|\.DOWN|\.BFLY)'
+atomType = fr'(?P<atom>\.ADD|\.DEC|\.EXCH)'
 
 
 
@@ -153,6 +154,11 @@ grammar = {
   'STG' : [{'code' : 0x386, 'rule' : rf'STG{memType}{memCache}{memScope}{memStrong} {addr24}, {rs1};'}],
   'LDS' : [{'code' : 0x984, 'rule' : rf'LDS{memType}{memCache} {rd}, {addr24};'}],
   'STS' : [{'code' : 0x388, 'rule' : rf'STS{memType}{memCache} {addr24}, {rs1};'}],
+  # Load matrix
+  # TODO: UR offset
+  'LDSM' : [{'code' : 0x83b, 'rule' : rf'LDSM.16.M88{numMat} {rd}, {addr24};'}],
+  # TODO: .ZFILL & UR offset
+  'LDGSTS' : ['code' : 0xfae, 'rule' : rf'LDGSTS{memType} {rd}, {addr24}, {rs0};'],
   # LDC has its own rule.
   'LDC' : [{'code' : 0xb82, 'rule' : rf'LDC{memType} {rd}, {cs1};'}], # Add register offset.
 
@@ -172,6 +178,7 @@ grammar = {
   'LOP3'  : [{'code' : 0x212, 'rule' : rf'LOP3\.LUT {pd0i}{rd}, {rs0}, {icrs1}, {rs2}, {isw8}(?:, {ps0})?;', 'lat' : 5}],
   'SHF'   : [{'code' : 0x219, 'rule' : rf'SHF{shf} {rd}, {rs0}, {icrs1}, {rs2};', 'lat' : 5}], # Somethings 4. st. 5.
   'PRMT'  : [{'code' : 0x216, 'rule' : rf'PRMT {rd}, {rs0}, {icrs1}, {rs2};', 'lat': 5}],
+  'SEL'   : [{'code' : 0x207, 'rule' : rf'SEL {rd}, {rs0}, {icrs1}, {ps0};'}],
 
   # Half instructions
   'HADD2' : [{'code' : 0x230, 'rule' : rf'HADD2 {rd}, {rs0}, {rs1};', 'lat' : 7}],
@@ -198,6 +205,7 @@ grammar = {
   'CS2R' : [{'code' : 0x805, 'rule' : fr'CS2R {rd}, {sr};', 'lat' : 5}],
   'S2R'  : [{'code' : 0x919, 'rule' : fr'S2R {rd}, {sr};', 'lat' : 7}],  
   'NOP'  : [{'code' : 0x918, 'rule' : r'NOP;'}],
+  'YIELD': [{'code' : 0x946, 'rule' : fr'YIELD;'}], # & ps0 = pt
   'BAR'  : [{'code' : 0xb1d, 'rule' : fr'BAR(?P<bar>\.SYNC|\.SYNC.DEFER_BLOCKING|) {bar};'}], 
   # Predicate instructions.
   'P2R' : [{'code' : 0x803, 'rule' : fr'P2R {rd}, (?P<pr>PR), {is1};', 'lat' : 8}],
@@ -206,6 +214,12 @@ grammar = {
   'SHFL' : [{'code' : 0x389, 'rule' : fr'SHFL{shfl} {rd}, {rs0}, {icrs1}, {rs2};', 'lat' : 20}],
   # Conversion
   'F2F' : [{'code' : 0x304, 'rule' : fr'F2F(?P<dtype>\.F16|\.F32)(?P<stype>\.F16|\.F32) {rd}, {rs1};', 'lat':5}],
+  # Atomic instructions
+  # TODO: UR offset
+  'ATOMS' : [{'code' : 0x38d, 'rule' : fr'ATOMS.CAS {rd}, {addr24}, {rs1}, {rs2};'},
+             {'code' : 0x38c, 'rule' : fr'ATOMS{atomType} {rd}, {addr24}, {rs1};'}],
+  'ATOMG' : [{'code' : 0x3a9, 'rule' : fr'ATOMG.CAS{memStrong}{memScope} {rd}, {addr24}, {rs1}, {rs2};'},
+              'code' : 0x3a8, 'rule' : fr'ATOMG.EXCH{memStrong}{memScope} {rd}, {addr24}, {rs1};'],
 }
 
 
