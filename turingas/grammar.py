@@ -337,7 +337,7 @@ IADD3, LOP3, IMAD, LEA: nops0
 IADD3: nops1
 15<<13
 
-IADD3, LEA: x
+IADD3, LEA, IMAD: x
 1<<10 .X
 
 
