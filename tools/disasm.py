@@ -4,7 +4,7 @@ import re
 
 FLINE_RE = re.compile(r'\s*/\*\w{4}\*/\s*([^;]*;)\s*/\* 0x(\w{16}) \*/\s*')
 SLINE_RE = re.compile(r'\s*/\* 0x(\w{16}) \*/\s*')
-FNAME_RE = re.compile(r'\s*Function : (\w+)\s*')
+FNAME_RE = re.compile(r'\s*Function : ([\w|\(|\)]+)\s*')
 BRA_RE   = re.compile(r'(.*BRA(?:\.U)? )(0x\w+);')
 
 def parseCtrl(sline):

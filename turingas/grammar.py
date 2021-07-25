@@ -19,8 +19,10 @@ ps1i= fr'(?:(?:, {ps1})|(?P<nops1>))'
 rd  = fr'(?P<rd>{reg})'
 rs0 = fr'(?P<rs0neg>\-)?(?P<rs0>{reg})(?P<reuse1>\.reuse)?'
 is0w24 = fr'(?P<is0w24>\-?(?:{immed}))'
+is0w20 = fr'(?P<is0w20>\-?(?:{immed}))'
 isw8   = fr'(?P<isw8>(?:{immed}))' # immed source width8
 is11w5 = fr'(?P<is11w5>(?:{immed}))' # immed source offset11 width5
+is96w12 = fr'(?P<is96w12>(?:{immed}))' # immed source offset 96 width 12 (LDGSTS src)
 is0 = fr'(?P<is0>(?:{immed}))'
 is1 = fr'(?P<is1>(?P<is1neg>\-)?(?:{immed}))'
 fs1 = fr'(?P<fs1>\-?(?:[0-9]*\.)?[0-9]+)'
@@ -38,6 +40,7 @@ icrs1 = fr'(?:(?:{is1})|(?:{cs1})|(?:{rs1}))'
 fcrs1 = fr'(?:(?:{fs1})|(?:{cs1})|(?:{rs1}))'
 fcrs1add = fr'(?:(?:{fs1add})|(?:{cs1add})|(?:{rs1}))'
 cp    = fr'(?:(?:(?P<cp>{p}),?)|(?P<nocp>))' # CP: control instructions predicate
+shflMask = fr'(?P<shflMask>(?:{immed}))'
 ldgp  = fr'(?:(?:(?P<ldgp>{p}),?)|(?P<noldgp>))'
 sr = r'(?P<sr>\S+)'
 X  = r'(?P<x>\.X)?'
@@ -46,6 +49,9 @@ bra = r'(?P<u>\.U)?'
 # Special rules for mma884
 rs0mma884 = fr'{rs0}(?P<rs0layout>\.ROW|\.COL)'
 rs1mma884 = fr'{rs1}(?P<rs1layout>\.ROW|\.COL)'
+# 
+depbarN = fr'(?P<depbarN>{hexx}|\d+)'
+ldgsts = fr'(?P<E>\.E)?(?P<bypass>\.BYPASS)?(?P<ltc128b>\.LTC128B)?(?P<type>\.U8|\.S8|\.U16|\.S16|\.32|\.64|\.128)?'
 
 # Helpers to get operand code.
 def GetP(value, shift):
@@ -92,10 +98,14 @@ operands = {
   'rs1' : lambda value : GetR(value, 96),
   'is0' : lambda value : GetI(value, 96),
   'is0w24':lambda value: GetI(value, 104, 0xffffff),
+  'is0w20':lambda value: GetI(value, 108, 0xfffff),
+  'is96w12' : lambda value : GetI(value, 96, 0xfff),
+  'shflMask' :lambda value: GetI(value, 104, 0x1f),
   'isw8': lambda value : GetI(value, 8, 0xff),
   'is11w5' : lambda value : GetI(value, 11, 0x1f),
   'is1' : lambda value : GetI(value, 96),
   'ibar': lambda value : GetI(value, 118, 0xff),
+  'depbarN' : lambda value : GetI(value, 102, 0x3f),
   'cs1' : lambda value : GetC(value, 96),
   'cs1add' : lambda value : GetC(value, 96),
   'c34' : lambda value : GetC(value, 112), 
@@ -120,6 +130,8 @@ operands = {
 addr24 = fr'\[(?:(?P<rs0>{reg})|(?P<nors0>))(?:\s*\+?\s*{is0w24})?\]'
 addr   = fr'\[(?:(?P<rs0>{reg})|(?P<nors0>))(?:\s*\+?\s*{is0})?\]'
 addrC   = fr'\[(?:(?P<rs0>{reg})|(?P<nors0>))(?:\s*\+?\s*{cs1})?\]'
+addrLdgstsDst = fr'\[{rd}(?:\s*\+?\s*{is0w20})?\]'
+addrLdgstsSrc = fr'\[{rs0}\.64(?:\s*\+?\s*{is96w12})?\]' # always .64
 memType = fr'(?P<E>\.E)?(?P<U>\.U)?(?P<type>\.U8|\.S8|\.U16|\.S16|\.32|\.64|\.128)?'
 memCache = fr'(?:\.(?P<cache>EF|LU))?'
 memScope = fr'(?P<scope>\.CTA|\.GPU|\.SYS)?'
@@ -131,6 +143,7 @@ icmp = fr'(?P<cmp>\.EQ|\.NE|\.LT|\.GT|\.GE|\.LE)'
 boolOp = fr'(?P<boolOp>\.AND|\.XOR|\.OR)'
 imadType = fr'(?P<type>\.U32|\.S32)?'
 cmpType = fr'(?P<type>\.U32|\.S32)?'
+hmmaShape = fr'(?P<shape>\.1688|\.16816)'
 hmmaType = fr'(?P<type>\.F16|\.F32)'
 mma884 = fr'(?P<dtype>\.F16|\.F32)(?P<ctype>\.F16|\.F32)(?P<step>\.STEP0|\.STEP1|\.STEP2|\.STEP3)'
 immaInfix = fr'(?P<infix>\.8816|\.8832)'
@@ -139,6 +152,9 @@ immaT1 = fr'(?P<type1>\.U8|\.S8|\.U4|\.S4)'
 shf  = fr'(?:(?P<lr>\.L|\.R)(?P<type>\.S32|\.U32|\.S64|\.U64)?(?P<hi>\.HI)?)'
 shfl = fr'(?P<shfl>\.IDX|\.UP|\.DOWN|\.BFLY)'
 atomType = fr'(?P<atom>\.ADD|\.DEC|\.EXCH)'
+ldsmLayout = fr'(?P<ldsmLayout>\.M88|\.MT88)'
+numMat = fr'(?P<numMat>\.1|\.2|\.4)'
+depbarCmp = fr'(?P<depbarCmp>\.LE)'
 
 
 
@@ -156,9 +172,11 @@ grammar = {
   'STS' : [{'code' : 0x388, 'rule' : rf'STS{memType}{memCache} {addr24}, {rs1};'}],
   # Load matrix
   # TODO: UR offset
-  # 'LDSM' : [{'code' : 0x83b, 'rule' : rf'LDSM.16.M88{numMat} {rd}, {addr24};'}],
+  'LDSM' : [{'code' : 0x83b, 'rule' : rf'LDSM.16{ldsmLayout}{numMat} {rd}, {addr24};'}],
   # TODO: .ZFILL & UR offset
-  'LDGSTS' : [{'code' : 0xfae, 'rule' : rf'LDGSTS{memType} {rd}, {addr24}, {rs0};'}],
+  'LDGSTS' : [{'code' : 0xfae, 'rule' : rf'LDGSTS{ldgsts} {addrLdgstsDst}, {addrLdgstsSrc}{ps0i};'}],
+  'LDGDEPBAR' : [{'code' : 0x9af, 'rule' : rf'LDGDEPBAR;'}],
+  'DEPBAR' : [{'code' : 0x91a, 'rule' : rf'DEPBAR{depbarCmp} SB0, {depbarN};'}],
   # LDC has its own rule.
   'LDC' : [{'code' : 0xb82, 'rule' : rf'LDC{memType} {rd}, {cs1};'}], # Add register offset.
 
@@ -171,8 +189,8 @@ grammar = {
   # Do not capture them () as flags. But treat them as different instructions.
   'IMAD'  : [{'code' : 0x224, 'rule' : rf'IMAD{imadType}{X} {rd}, {pd0i}{rs0}, {icrs1}, {rs2}{ps0i};', 'lat' : 5},
              {'code' : 0x224, 'rule' : rf'IMAD{imadType}{X} {rd}, {pd0i}{rs0}, {rs2}, {ic2}{ps0i};', 'lat' : 5}, 
-             {'code' : 0x225, 'rule' : rf'IMAD.WIDE{imadType} {rd}, {pd0i}{rs0}, {icrs1}, {rs2}{ps0i};'}, 
-             {'code' : 0x225, 'rule' : rf'IMAD.WIDE{imadType} {rd}, {pd0i}{rs0}, {rs2}, {ic2}{ps0i};'}, 
+             {'code' : 0x225, 'rule' : rf'IMAD.WIDE {rd}, {pd0i}{rs0}, {icrs1}, {rs2}{ps0i};'}, 
+             {'code' : 0x225, 'rule' : rf'IMAD.WIDE {rd}, {pd0i}{rs0}, {rs2}, {ic2}{ps0i};'}, 
              # IMAD.HI is special. rs2 represent register after it. Must be even register.
              {'code' : 0x227, 'rule' : rf'IMAD.HI{imadType} {rd}, {pd0i}{rs0}, {icrs1}, {rs2};'}], 
   'ISETP' : [{'code' : 0x20c, 'rule' : rf'ISETP{icmp}{cmpType}{boolOp} {pd0}, {pd1}, {rs0}, {icrs1}, {ps0};', 'lat' : 4}],
@@ -196,7 +214,7 @@ grammar = {
   'FMUL' : [{'code' : 0x220, 'rule' : rf'FMUL {rd}, {rs0}, {fcrs1};'}],
   'FMNMX': [{'code' : 0x209, 'rule' : rf'FMNMX {rd}, {rs0}, {rs1}, {ps0};'}], # ps0=PT:fmin
   # TensorCore instructions
-  'HMMA' : [{'code' : 0x23c, 'rule' : rf'HMMA\.1688{hmmaType} {rd}, {rs0}, {rs1}, {rs2};'},
+  'HMMA' : [{'code' : 0x23c, 'rule' : rf'HMMA{hmmaShape}{hmmaType} {rd}, {rs0}, {rs1}, {rs2};'},
             {'code' : 0x236, 'rule' : rf'HMMA\.884{mma884} {rd}, {rs0mma884}, {rs1mma884}, {rs2};'}],
   'IMMA' : [{'code' : 0x237, 'rule' : rf'IMMA{immaInfix}{immaT0}{immaT1} {rd}, {rs0}\.ROW, {rs1}(?P<s1col>\.COL), {rs2};'},],
   'BMMA' : [{'code' : 0x23d, 'rule' : rf'BMMA\.88128(?P<bmma>\.POPC) {rd}, {rs0}\.ROW, {rs1}(?P<s1col>\.COL), {rs2};'},],
@@ -213,7 +231,7 @@ grammar = {
   'P2R' : [{'code' : 0x803, 'rule' : fr'P2R {rd}, (?P<pr>PR), {is1};', 'lat' : 8}],
   'R2P' : [{'code' : 0x804, 'rule' : fr'R2P PR, {rs0}, {is1};', 'lat' : 12}],
   # Shuffle
-  'SHFL' : [{'code' : 0x389, 'rule' : fr'SHFL{shfl} {rd}, {rs0}, {icrs1}, {rs2};', 'lat' : 20}],
+  'SHFL' : [{'code' : 0x389, 'rule' : fr'SHFL{shfl} {pd0}, {rd}, {rs0}, {icrs1}, {shflMask};', 'lat' : 20}],
   # Conversion
   'F2F' : [{'code' : 0x304, 'rule' : fr'F2F(?P<dtype>\.F16|\.F32)(?P<stype>\.F16|\.F32) {rd}, {rs1};', 'lat':5}],
   # Atomic instructions
@@ -227,7 +245,7 @@ grammar = {
 
 
 flag_str = '''
-LDG, STG, LDS, STS, LDC: type
+LDG, STG, LDS, STS, LDC, LDGSTS: type
 0<<9 .U8
 1<<9 .S8
 2<<9 .U16
@@ -251,13 +269,22 @@ LDG, STG: cache
 LDS: U
 1<<12 .U
 
-LDG, STG: E
+LDG, STG, LDGSTS: E
 1<<8 .E
 
 LDG, STG: scope
 0<<13 .CTA
 2<<13 .GPU
 3<<13 .SYS
+
+LDSM: ldsmLayout
+0<<12 .M88
+4<<12 .MT88
+
+LDSM: numMat
+0<<8 .1
+1<<8 .2
+2<<8 .4
 
 BRA: is1neg
 262143<<0 - # 0x3ffff
@@ -320,7 +347,7 @@ SHFL: shfl
 0<<122 .IDX
 1<<122 .UP
 2<<122 .DOWN
-3<<122 >BFLY
+3<<122 .BFLY
 
 SHF, LEA: hi
 1<<16 .HI
@@ -331,7 +358,7 @@ IADD3, LOP3, IMAD, LEA: nopd0
 IADD3: nopd1
 7<<20
 
-IADD3, LOP3, IMAD, LEA: nops0
+IADD3, LOP3, IMAD, LEA, LDGSTS: nops0
 15<<23
 
 IADD3: nops1
@@ -358,9 +385,20 @@ MUFU: mufu
 7<<10 .RSQ64H
 8<<10 .SQRT
 
+##################################################
+# tensor-core flags
 HMMA: type
 0<<0 .F16
 1<<12 .F32
+
+# HMMA: abtype
+# 0<<0 #default
+# 8<<16 .TF32
+# 4<<16 .BF16
+
+HMMA: shape
+0<<0 .1688
+1<<11 .16816
 
 HMMA: rs0layout
 0<<9 .ROW
@@ -421,6 +459,10 @@ F2F: dtype
 
 F2F: stype
 1<<11 .F32
+
+# sm75+
+DEPBAR: depbarCmp
+1<<111 .LE
 '''
 
 # Create flag dict
@@ -580,6 +622,8 @@ def GenCode(op, gram, captured_dict, asm_line):
     code |= 0x7 << 4
   if op == 'LDC':
     code |= 0xff << 88
+  if op == 'LDGSTS':
+    code |= 0x8101d46
   # if op == 'BRA':
   #  code |= 0x1 << 96
 
