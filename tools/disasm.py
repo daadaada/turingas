@@ -6,6 +6,7 @@ FLINE_RE = re.compile(r'\s*/\*\w{4}\*/\s*([^;]*;)\s*/\* 0x(\w{16}) \*/\s*')
 SLINE_RE = re.compile(r'\s*/\* 0x(\w{16}) \*/\s*')
 FNAME_RE = re.compile(r'\s*Function : ([\w|\(|\)]+)\s*')
 BRA_RE   = re.compile(r'(.*BRA(?:\.U)? )(0x\w+);')
+BSSY_RE  = re.compile(r'(.*BSSY B0, )(0x\w+);')
 
 def parseCtrl(sline):
   enc = int(SLINE_RE.match(sline).group(1), 16)
@@ -31,10 +32,11 @@ def processSassLines(fline, sline, labels):
   # BRA target address
   if BRA_RE.match(asm) != None:
     target = int(BRA_RE.match(asm).group(2), 16)
-    if target in labels:
-      pass
-    else:
+    if target not in labels:
       labels[target] = len(labels)
+  # BSSY target address
+  if BSSY_RE.match(asm) != None:
+    target = int(BSSY_RE)
   return (f'{ctrl}', f'{asm}')
 
 

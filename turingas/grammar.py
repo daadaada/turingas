@@ -6,7 +6,7 @@ from struct import pack, unpack
 #   0-32 immed, 24-32: rs1. 32-40: rs0. 40-48: rd. 48-64: pred+op
 hexx = fr'0[xX][0-9a-fA-F]+' # hex is a Python keyword
 immed = fr'{hexx}|\d+'
-reg = fr'[a-zA-Z_]\w*'
+reg = fr'[a-zA-Z_]\w*' # R(\d+|Z)
 p   = r'!?P[0-6T]'
 pd0 = fr'(?P<pd0>{p})'
 pd0i= fr'(?:(?:{pd0}, )|(?P<nopd0>))' # stands for pd0(if)
@@ -42,6 +42,7 @@ fcrs1add = fr'(?:(?:{fs1add})|(?:{cs1add})|(?:{rs1}))'
 cp    = fr'(?:(?:(?P<cp>{p}),?)|(?P<nocp>))' # CP: control instructions predicate
 shflMask = fr'(?P<shflMask>(?:{immed}))'
 ldgp  = fr'(?:(?:(?P<ldgp>{p}),?)|(?P<noldgp>))'
+sb    = fr'(?P<sb>B[0-6])' # barriers
 sr = r'(?P<sr>\S+)'
 X  = r'(?P<x>\.X)?'
 bar = fr'(?P<ibar>(?:{immed}))'
@@ -136,11 +137,27 @@ memType = fr'(?P<E>\.E)?(?P<U>\.U)?(?P<type>\.U8|\.S8|\.U16|\.S16|\.32|\.64|\.12
 memCache = fr'(?:\.(?P<cache>EF|LU))?'
 memScope = fr'(?P<scope>\.CTA|\.GPU|\.SYS)?'
 memStrong = fr'(?P<strong>\.CONSTANT|\.WEEK|\.STRONG)?'
+# RED
+redOp = fr'(?P<E>\.E)(?P<redOp>\.ADD|\.MIN|\.MAX\.AND)'
+redType = fr'(?P<redType>\.U32|\.S32|\.F32|\.F16x2.RN|\.F64.FTZ.RN)'
+# I2F
+i32ty = r'(?:(?P<ssign>\.U|\.S)(?P<swidth>8|16|32|32))'
+i64ty = r'(?:(?P<ssign>\.U|\.S)(?P<swidth>64))'
+f32ty = r'\.F16|\.F32'
+i2f32 = fr'(?P<dtype>{f32ty})?(?:{i32ty})?'
+i2f64 = fr'(?:(?P<dtype>\.F64)(?:{i32ty}|{i64ty}))|(?:(?P<dtype>{f32ty})|(?:{i64ty}))'
+# F2I
+di32ty = r'(?:(?P<dsign>\.U|\.S)(?P<dwidth>8|16|32|32))'
+di64ty = r'(?:(?P<dsign>\.U|\.S)(?P<dwidth>64))'
+f2i32 = fr'(?P<stype>{f32ty})?(?P<ftz>\.FTZ)?{di32ty}?'
+f2i64 = fr'(?:(?P<stype>{f32ty}){di64ty})|(?:(?P<stype>\.F64){di32ty}?)'
+
 
 # Options
 mufu = fr'(?P<mufu>\.COS|\.SIN|\.EX2|\.LG2|\.RCP|\.RSQ|\.RCP64H|\.RSQ64H|\.SQRT)'
 icmp = fr'(?P<cmp>\.EQ|\.NE|\.LT|\.GT|\.GE|\.LE)'
 boolOp = fr'(?P<boolOp>\.AND|\.XOR|\.OR)'
+imadSem  = fr'(?:\.MOV|\.SHL|\.IADD)?'
 imadType = fr'(?P<type>\.U32|\.S32)?'
 cmpType = fr'(?P<type>\.U32|\.S32)?'
 hmmaShape = fr'(?P<shape>\.1688|\.16816)'
@@ -152,6 +169,9 @@ immaT1 = fr'(?P<type1>\.U8|\.S8|\.U4|\.S4)'
 shf  = fr'(?:(?P<lr>\.L|\.R)(?P<type>\.S32|\.U32|\.S64|\.U64)?(?P<hi>\.HI)?)'
 shfl = fr'(?P<shfl>\.IDX|\.UP|\.DOWN|\.BFLY)'
 atomType = fr'(?P<atom>\.ADD|\.DEC|\.EXCH)'
+frnd = fr'(?P<frnd>\.RN|\.RZ|\.RM|\.RP)?'
+irnd = fr'(?P<irnd>\.TRUNC|\.FLOOR|\.CEIL)?(?P<ntz>\.NTZ)?'
+# >= Turing
 ldsmLayout = fr'(?P<ldsmLayout>\.M88|\.MT88)'
 numMat = fr'(?P<numMat>\.1|\.2|\.4)'
 depbarCmp = fr'(?P<depbarCmp>\.LE)'
@@ -180,6 +200,10 @@ grammar = {
   # LDC has its own rule.
   'LDC' : [{'code' : 0xb82, 'rule' : rf'LDC{memType} {rd}, {cs1};'}], # Add register offset.
 
+  # Uniform datapath instructions
+  'UMOV' : [{'code' : 0xc82, 'rule' : rf'UMOV {rd}, {icrs1};'}],
+  'ULDC' : [{'code' : 0xab9, 'rule' : rf'ULDC{memType} {rd}, {cs1};'}],
+
   # Integer instructions
   'IADD3': [{'code' : 0x210, 'rule' : rf'IADD3{X} {rd}, {pd0i}{pd1i}{rs0}, {icrs1}, {rs2}{ps0i}{ps1i};', 'lat' : 4},
             {'code' : 0x210, 'rule' : rf'IADD3{X} {rd}, {pd0i}{pd1i}{rs0}, {rs2}, {ic2}{ps0i}{ps1i};'}],
@@ -187,8 +211,8 @@ grammar = {
   'LEA'  : [{'code' : 0x211, 'rule' : rf'LEA(?P<hi>\.HI)?{X} {rd}, {pd0i}{rs0}, {icrs1}, {is11w5}{ps0i}{ps1i};'},
             {'code' : 0x211, 'rule' : rf'LEA(?P<hi>\.HI)?{X} {rd}, {pd0i}{rs0}, {icrs1}, {rs2}, {is11w5}{ps0i}{ps1i};'}],
   # Do not capture them () as flags. But treat them as different instructions.
-  'IMAD'  : [{'code' : 0x224, 'rule' : rf'IMAD{imadType}{X} {rd}, {pd0i}{rs0}, {icrs1}, {rs2}{ps0i};', 'lat' : 5},
-             {'code' : 0x224, 'rule' : rf'IMAD{imadType}{X} {rd}, {pd0i}{rs0}, {rs2}, {ic2}{ps0i};', 'lat' : 5}, 
+  'IMAD'  : [{'code' : 0x224, 'rule' : rf'IMAD{imadSem}{imadType}{X} {rd}, {pd0i}{rs0}, {icrs1}, {rs2}{ps0i};', 'lat' : 5},
+             {'code' : 0x224, 'rule' : rf'IMAD{imadSem}{imadType}{X} {rd}, {pd0i}{rs0}, {rs2}, {ic2}{ps0i};', 'lat' : 5}, 
              {'code' : 0x225, 'rule' : rf'IMAD.WIDE {rd}, {pd0i}{rs0}, {icrs1}, {rs2}{ps0i};'}, 
              {'code' : 0x225, 'rule' : rf'IMAD.WIDE {rd}, {pd0i}{rs0}, {rs2}, {ic2}{ps0i};'}, 
              # IMAD.HI is special. rs2 represent register after it. Must be even register.
@@ -197,8 +221,10 @@ grammar = {
   'LOP3'  : [{'code' : 0x212, 'rule' : rf'LOP3\.LUT {pd0i}{rd}, {rs0}, {icrs1}, {rs2}, {isw8}(?:, {ps0})?;', 'lat' : 5}],
   'SHF'   : [{'code' : 0x219, 'rule' : rf'SHF{shf} {rd}, {rs0}, {icrs1}, {rs2};', 'lat' : 5}], # Somethings 4. st. 5.
   'PRMT'  : [{'code' : 0x216, 'rule' : rf'PRMT {rd}, {rs0}, {icrs1}, {rs2};', 'lat': 5}],
-  'SEL'   : [{'code' : 0x207, 'rule' : rf'SEL {rd}, {rs0}, {icrs1}, {ps0};'}],
-  'SGXT'  : [{'code' : 0x21a, 'rule' : rf'SGXT{imadType} {rd}, {rs0}, {icrs1};'}],
+  'SEL'   : [{'code' : 0x207, 'rule' : rf'SEL {rd}, {rs0}, {icrs1}, {ps0};', 'lat': 4}],
+  'SGXT'  : [{'code' : 0x21a, 'rule' : rf'SGXT{imadType} {rd}, {rs0}, {icrs1};', 'lat': 5}],
+  'IABS'  : [{'code' : 0x213, 'rule' : rf'IABS {rd}, {icrs1};', 'lat': 6}],
+  'IMNMX' : [{'code' : 0x217, 'rule' : rf'IMNMX {rd}, {rs0}, {icrs1}, {ps0};'}],
 
   # Half instructions
   'HADD2' : [{'code' : 0x230, 'rule' : rf'HADD2 {rd}, {rs0}, {rs1};', 'lat' : 7}],
@@ -220,10 +246,14 @@ grammar = {
   'BMMA' : [{'code' : 0x23d, 'rule' : rf'BMMA\.88128(?P<bmma>\.POPC) {rd}, {rs0}\.ROW, {rs1}(?P<s1col>\.COL), {rs2};'},],
   # Control instructions
   'BRA'  : [{'code' : 0x947, 'rule' : rf'BRA((?P<bra>\.U))? {cp}{is1};', 'lat' : 7}], # Lat?
+  'BSSY' : [{'code' : 0x945, 'rule' : rf'BSSY {sb}, {cp}{is1};'}],
+  'BSYNC': [{'code' : 0x941, 'rule' : rf'BSYNC {sb};'}],
+  'BMOV' : [{'code' : 0x355, 'rule' : rf'BMOV.32.CLEAR {rd}, {sb};'}],
   'EXIT' : [{'code' : 0x94d, 'rule' : rf'EXIT\s*{cp};'}], 
   # Miscellaneous instructions.
   'CS2R' : [{'code' : 0x805, 'rule' : fr'CS2R {rd}, {sr};', 'lat' : 5}],
   'S2R'  : [{'code' : 0x919, 'rule' : fr'S2R {rd}, {sr};', 'lat' : 7}],  
+  'S2UR'  : [{'code' : 0x9c3, 'rule' : fr'S2UR {rd}, {sr};', 'lat': 20}],
   'NOP'  : [{'code' : 0x918, 'rule' : r'NOP;'}],
   'YIELD': [{'code' : 0x946, 'rule' : fr'YIELD;'}], # & ps0 = pt
   'BAR'  : [{'code' : 0xb1d, 'rule' : fr'BAR(?P<bar>\.SYNC|\.SYNC.DEFER_BLOCKING|) {bar};'}], 
@@ -234,12 +264,20 @@ grammar = {
   'SHFL' : [{'code' : 0x389, 'rule' : fr'SHFL{shfl} {pd0}, {rd}, {rs0}, {icrs1}, {shflMask};', 'lat' : 20}],
   # Conversion
   'F2F' : [{'code' : 0x304, 'rule' : fr'F2F(?P<dtype>\.F16|\.F32)(?P<stype>\.F16|\.F32) {rd}, {rs1};', 'lat':5}],
+  'F2I' : [{'code' : 0x305, 'rule' : fr'F2I{f2i32}{irnd} {rd}, {rs1};'}, 
+           # 64-bit
+           {'code' : 0x311, 'rule' : fr'F2I{f2i64}{irnd} {rd}, {rs1};'}],
+
+  'I2F' : [{'code' : 0x306, 'rule' : fr'I2F{i2f32}{frnd} {rd}, {rs1};'}, 
+           {'code' : 0x312, 'rule' : fr'I2F(i2f64){frnd} {rd}, {rs1};'}],
   # Atomic instructions
   # TODO: UR offset
   'ATOMS' : [{'code' : 0x38d, 'rule' : fr'ATOMS.CAS {rd}, {addr24}, {rs1}, {rs2};'},
              {'code' : 0x38c, 'rule' : fr'ATOMS{atomType} {rd}, {addr24}, {rs1};'}],
   'ATOMG' : [{'code' : 0x3a9, 'rule' : fr'ATOMG.CAS{memStrong}{memScope} {rd}, {addr24}, {rs1}, {rs2};'},
               {'code' : 0x3a8, 'rule' : fr'ATOMG.EXCH{memStrong}{memScope} {rd}, {addr24}, {rs1};'}],
+  # with UR offset [R2+UR4+0x4] => bits[27:26] = 0b11
+  'RED' : [{'code' : 0x98e, 'rule' : fr'RED{redOp}{redType}{memStrong}{memScope} {addr24}, {rs1};'}],
 }
 
 
@@ -255,7 +293,7 @@ LDG, STG, LDS, STS, LDC, LDGSTS: type
 5<<9 .64
 6<<9 .128
 
-LDG, STG: strong
+LDG, STG, ATOMS, ATOMG, RED: strong
 0<<15 .CONSTANT
 1<<15 DEFAULT
 2<<15 .STRONG
@@ -269,10 +307,10 @@ LDG, STG: cache
 LDS: U
 1<<12 .U
 
-LDG, STG, LDGSTS: E
+LDG, STG, LDGSTS, RED: E
 1<<8 .E
 
-LDG, STG: scope
+LDG, STG, ATOMG, RED: scope
 0<<13 .CTA
 2<<13 .GPU
 3<<13 .SYS
@@ -310,6 +348,21 @@ IMAD: type
 # .S16
 # .U64
 # .S64
+
+RED: redOp
+0<<23 .ADD
+1<<23 .MIN
+2<<23 .MAX
+5<<23 .AND
+
+
+RED: redType
+0<<9 DEFAULT
+0<<9 .U32
+1<<9 .S32
+3<<9 .F32
+4<<9 .F16x2.RN
+6<<9 .F64.FTZ.RN
 
 ISETP: cmp
 1<<12 .LT
@@ -454,11 +507,68 @@ BAR: bar
 1<<15 .SYNCALL
 1<<16 .SYNC.DEFER_BLOCKING
 
+# type conversions
 F2F: dtype
 1<<21 .F16
 
 F2F: stype
 1<<11 .F32
+
+I2F: dtype
+1<<11 .F16
+2<<11 DEFAULT
+2<<11 .F32
+3<<11 .F64
+
+I2F: swidth
+0<<20 8
+1<<20 16
+2<<20 DEFAULT
+2<<20 32
+3<<20 64
+
+I2F: ssign
+0<<10 .U
+1<<10 DEFAULT
+1<<10 .S
+
+I2F: frnd
+0<<14 DEFAULT
+0<<14 .RN
+1<<14 .RM
+2<<14 .RP
+3<<14 .RZ
+
+F2I: irnd
+0<<14 DEFAULT
+1<<14 .FLOOR
+2<<14 .CEIL
+3<<14 .TRUNC
+
+F2I: ftz
+1<<16 .FTZ
+
+F2I: ntz
+1<<13 .NTZ
+
+F2I: dsign
+0<<8 .U
+1<<8 DEFAULT
+1<<8 .S
+
+F2I: dwidth
+0<<11 8
+1<<11 16
+2<<11 DEFAULT
+2<<11 32
+3<<11 64
+
+F2I: stype
+1<<20 .F16
+2<<20 DEFAULT
+2<<20 .F32
+3<<20 .F64
+
 
 # sm75+
 DEPBAR: depbarCmp
@@ -571,7 +681,11 @@ def GenCode(op, gram, captured_dict, asm_line):
     code (0xffff..ff)
   '''
   # Start with instruction code.
-  code = gram['code'] << 64 
+  try:
+    code = gram['code'] << 64 
+  except Exception as e:
+    print(asm_line)
+    raise e
   flag = flags[op]
 
   # Process predicate.
@@ -624,6 +738,8 @@ def GenCode(op, gram, captured_dict, asm_line):
     code |= 0xff << 88
   if op == 'LDGSTS':
     code |= 0x8101d46
+  if op == 'BMOV':
+    code |= 0x100000
   # if op == 'BRA':
   #  code |= 0x1 << 96
 

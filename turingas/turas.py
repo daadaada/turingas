@@ -38,6 +38,7 @@ def Assemble(file, include=None):
   exit_offsets   = []
   labels = {} # Name => line_num
   branches = [] # Keep track of branch instructions (BRA)
+  bssys = [] # Keep track of BSSY
   line_num = 0
 
   def GetSmemSize(file):
@@ -59,6 +60,8 @@ def Assemble(file, include=None):
       instructions.append(line_result)
       if line_result['op'] == 'BRA':
         branches.append(line_result)
+      if line_result['op'] == 'BSSY':
+        bssys.append(line_result)
       if line_result['op'] == 'EXIT':
         exit_offsets.append(line_num * 16)
       line_num += 1
@@ -86,6 +89,10 @@ def Assemble(file, include=None):
     label = label.split(';')[0]
     relative_offset = (labels[label] - bra_instr['line_num'] - 1) * 0x10 
     bra_instr['rest'] = ' ' + hex(relative_offset) + ';'
+  for bssy in bssys:
+    label = re.match(r'\s*B\d, (\w+)', bssy['rest']).group(1) # B0, LBB2
+    relative_offset = (labels[label] - bssy['line_num'] - 1) * 0x10 
+    bssy['rest'] = re.sub(r'(\s*B\d,) (\w+)', rf'\1 {hex(relative_offset)};', bssy['rest'])
 
   # Parse instructions.
   # Generate binary code. And insert to the instructions list.
