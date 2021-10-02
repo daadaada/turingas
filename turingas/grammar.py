@@ -6,18 +6,30 @@ from struct import pack, unpack
 #   0-32 immed, 24-32: rs1. 32-40: rs0. 40-48: rd. 48-64: pred+op
 hexx = fr'0[xX][0-9a-fA-F]+' # hex is a Python keyword
 immed = fr'{hexx}|\d+'
-reg = fr'[a-zA-Z_]\w*' # R(\d+|Z)
+reg = fr'R(\d+|Z)' # R(\d+|Z)
+ureg = fr'UR(\d+|Z)'
 p   = r'!?P[0-6T]'
+up  = r'!?UP[0-6T]'
 pd0 = fr'(?P<pd0>{p})'
+upd0 = fr'(?P<upd0>{up})'
 pd0i= fr'(?:(?:{pd0}, )|(?P<nopd0>))' # stands for pd0(if)
+upd0i = fr'(?:(?:{upd0}, )|(?P<nopd0>))'
 pd1 = fr'(?P<pd1>{p})'
+upd1 = fr'(?P<upd1>{p})'
 pd1i= fr'(?:(?:{pd1}, )|(?P<nopd1>))'
+upd1i= fr'(?:(?:{upd1}, )|(?P<nopd1>))'
 ps0 = fr'(?P<ps0>{p})'
+ups0 = fr'(?P<ups0>{up})'
 ps0i= fr'(?:(?:, {ps0})|(?P<nops0>))'
+ups0i= fr'(?:(?:, {ups0})|(?P<nops0>))'
 ps1 = fr'(?P<ps1>{p})'
+ups1 = fr'(?P<ups1>{up})'
 ps1i= fr'(?:(?:, {ps1})|(?P<nops1>))'
+ups1i= fr'(?:(?:, {ups1})|(?P<nops1>))'
 rd  = fr'(?P<rd>{reg})'
+ud  = fr'(?P<ud>{ureg})'
 rs0 = fr'(?P<rs0neg>\-)?(?P<rs0>{reg})(?P<reuse1>\.reuse)?'
+us0 = fr'(?P<us0neg>\-)?(?P<us0>{ureg})'
 is0w24 = fr'(?P<is0w24>\-?(?:{immed}))'
 is0w20 = fr'(?P<is0w20>\-?(?:{immed}))'
 isw8   = fr'(?P<isw8>(?:{immed}))' # immed source width8
@@ -30,13 +42,19 @@ fs1add = fr'(?P<fs1add>\-?(?:[0-9]*\.)?[0-9]+)'
 cs1 = fr'(?P<cs1neg>\-)?c\[(?P<c34>{hexx})\]\[(?P<cs1>{hexx})\]'
 cs1add = fr'(?P<cs1addneg>\-)?c\[(?P<c34>{hexx})\]\[(?P<cs1add>{hexx})\]'
 rs1 = fr'(?P<rs1neg>\-)?(?P<rs1>{reg})(?P<reuse2>\.reuse)?'
+us1 = fr'(?P<us1neg>\-)?(?P<us1>{ureg})'
+uoffld = fr'(?:\s*\+(?P<uoffld>{ureg}))'
+uoffst = fr'(?:\s*\+(?P<uoffst>{ureg}))'
 is2 = fr'(?P<is2>(?P<is2neg>\-)?(?:{immed}))'
 cs2 = fr'(?P<cs2neg>\-)?c\[(?P<c35>{hexx})\]\[(?P<cs2>{hexx})\]' # fix c34/c35
 fs2 = fr'(?P<fs2>\-?(?:[0-9]*\.)?[0-9]+)'
 rs2 = fr'(?P<rs2neg>\-)?(?P<rs2>{reg})(?P<reuse3>\.reuse)?'
+us2 = fr'(?P<us2neg>\-)?(?P<us2>{ureg})'
+us2e1 = fr'(?P<us2e1>{ureg})' # us2, encoding location 1
 ic2   = fr'(?:(?:{is2})|(?:{cs2}))'
 fc2   = fr'(?:(?:{fs2})|(?:{cs2}))'
 icrs1 = fr'(?:(?:{is1})|(?:{cs1})|(?:{rs1}))'
+icrus1 = fr'(?:(?:{is1})|(?:{cs1})|(?:{rs1})|(?:{us1}))'
 fcrs1 = fr'(?:(?:{fs1})|(?:{cs1})|(?:{rs1}))'
 fcrs1add = fr'(?:(?:{fs1add})|(?:{cs1add})|(?:{rs1}))'
 cp    = fr'(?:(?:(?P<cp>{p}),?)|(?P<nocp>))' # CP: control instructions predicate
@@ -56,7 +74,7 @@ ldgsts = fr'(?P<E>\.E)?(?P<bypass>\.BYPASS)?(?P<ltc128b>\.LTC128B)?(?P<type>\.U8
 
 # Helpers to get operand code.
 def GetP(value, shift):
-  result = re.match(r'^(!)?P(\d|T)', value)
+  result = re.match(r'^(!)?U?P(\d|T)', value)
   neg = True if result.group(1) else False
   if result.group(2) == 'T':
     pred = 7
@@ -78,11 +96,14 @@ def GetF(value, shift):
   return value << shift
 
 def GetR(value, shift):
-  result = re.match(r'^R(\d+|Z)$', value)
+  result = re.match(r'^U?R(\d+|Z)$', value)
   if result == None:
     raise Exception(f'Bad register name: {value}\n')
   if result.group(1) == 'Z':
-    value = 0xff
+    if value.startswith('R'):
+      value = 0xff
+    else:
+      value = 0x3f # URZ
   elif int(result.group(1)) < 255:
     value = int(result.group(1))
   else:
@@ -95,8 +116,12 @@ def GetC(value, shift):
 
 operands = {
   'rd'  : lambda value : GetR(value, 80),
+  'ud'  : lambda value : GetR(value, 80),
   'rs0' : lambda value : GetR(value, 88),
+  'us0' : lambda value : GetR(value, 88),
   'rs1' : lambda value : GetR(value, 96),
+  'us1' : lambda value : GetR(value, 96),
+  'uoffld' : lambda value : GetR(value, 96),
   'is0' : lambda value : GetI(value, 96),
   'is0w24':lambda value: GetI(value, 104, 0xffffff),
   'is0w20':lambda value: GetI(value, 108, 0xfffff),
@@ -112,6 +137,9 @@ operands = {
   'c34' : lambda value : GetC(value, 112), 
   'c35' : lambda value : GetC(value, 112), 
   'rs2' : lambda value : GetR(value,  0),
+  'us2' : lambda value : GetR(value,  0),
+  'uoffst' : lambda value : GetR(value, 0),
+  'us2e1' : lambda value : GetR(value,  96),
   'is2' : lambda value : GetI(value, 96),
   'cs2' : lambda value : GetC(value, 96),
   'fs1' : lambda value : GetF(value, 96),
@@ -125,10 +153,16 @@ operands = {
   'pd1' : lambda value : GetP(value, 20),
   'ps0' : lambda value : GetP(value, 23),
   'ps1' : lambda value : GetP(value, 13),
+  'upd0' : lambda value : GetP(value, 17),
+  'upd1' : lambda value : GetP(value, 20),
+  'ups0' : lambda value : GetP(value, 23),
+  'ups1' : lambda value : GetP(value, 13),
 }
 
 # Memory options
 addr24 = fr'\[(?:(?P<rs0>{reg})|(?P<nors0>))(?:\s*\+?\s*{is0w24})?\]'
+addr24ld = fr'\[(?:(?P<rs0>{reg})(?P<off64>\.64)?|(?P<nors0>)){uoffld}?(?:\s*\+?\s*{is0w24})?\]' # with UR offset
+addr24st = fr'\[(?:(?P<rs0>{reg})(?P<off64>\.64)?|(?P<nors0>)){uoffst}?(?:\s*\+?\s*{is0w24})?\]'
 addr   = fr'\[(?:(?P<rs0>{reg})|(?P<nors0>))(?:\s*\+?\s*{is0})?\]'
 addrC   = fr'\[(?:(?P<rs0>{reg})|(?P<nors0>))(?:\s*\+?\s*{cs1})?\]'
 addrLdgstsDst = fr'\[{rd}(?:\s*\+?\s*{is0w20})?\]'
@@ -186,10 +220,10 @@ grammar = {
   'MOV' : [{'code' : 0x202, 'rule' : rf'MOV {rd}, {icrs1};', 'lat' : 5}],
 
   # Load/Store instructions 
-  'LDG' : [{'code' : 0x381, 'rule' : rf'LDG{memType}{memCache}{memStrong}{memScope}\s*{ldgp} {rd}, {addr24};' }],
+  'LDG' : [{'code' : 0x381, 'rule' : rf'LDG{memType}{memCache}{memStrong}{memScope}\s*{ldgp} {rd}, {addr24ld};' }],
   'STG' : [{'code' : 0x386, 'rule' : rf'STG{memType}{memCache}{memScope}{memStrong} {addr24}, {rs1};'}],
   'LDS' : [{'code' : 0x984, 'rule' : rf'LDS{memType}{memCache} {rd}, {addr24};'}],
-  'STS' : [{'code' : 0x388, 'rule' : rf'STS{memType}{memCache} {addr24}, {rs1};'}],
+  'STS' : [{'code' : 0x388, 'rule' : rf'STS{memType}{memCache} {addr24st}, {rs1};'}],
   # Load matrix
   # TODO: UR offset
   'LDSM' : [{'code' : 0x83b, 'rule' : rf'LDSM.16{ldsmLayout}{numMat} {rd}, {addr24};'}],
@@ -201,30 +235,37 @@ grammar = {
   'LDC' : [{'code' : 0xb82, 'rule' : rf'LDC{memType} {rd}, {cs1};'}], # Add register offset.
 
   # Uniform datapath instructions
-  'UMOV' : [{'code' : 0xc82, 'rule' : rf'UMOV {rd}, {icrs1};'}],
-  'ULDC' : [{'code' : 0xab9, 'rule' : rf'ULDC{memType} {rd}, {cs1};'}],
+  'UMOV' : [{'code' : 0x282, 'rule' : rf'UMOV {ud}, {icrus1};'}],
+  'USHF' : [{'code' : 0x299, 'rule' : rf'USHF{shf} {ud}, {us0}, {icrus1}, {us2};', 'lat' : 5}],
+  'UIADD3':[{'code' : 0x290, 'rule' : rf'UIADD3{X} {ud}, {upd0i}{upd1i}{us0}, {icrus1}, {us2}{ups0i}{ups1i};', 'lat' : 4},
+            {'code' : 0x290, 'rule' : rf'UIADD3{X} {ud}, {upd0i}{upd1i}{us0}, {us2}, {ic2}{ups0i}{ups1i};'}],
+  'ULEA'  :[{'code' : 0x291, 'rule' : rf'ULEA(?P<hi>\.HI)?{X}(?P<sx32>\.SX32)? {ud}, {upd0i}{us0}, {icrus1}, {is11w5}{ups0i}{ups1i};'},
+            {'code' : 0x291, 'rule' : rf'ULEA(?P<hi>\.HI)?{X}(?P<sx32>\.SX32)? {ud}, {upd0i}{us0}, {icrus1}, {us2}, {is11w5}{ups0i}{ups1i};'}],
+
+  'ULDC' : [{'code' : 0xab9, 'rule' : rf'ULDC{memType} {ud}, {cs1};'}],
 
   # Integer instructions
-  'IADD3': [{'code' : 0x210, 'rule' : rf'IADD3{X} {rd}, {pd0i}{pd1i}{rs0}, {icrs1}, {rs2}{ps0i}{ps1i};', 'lat' : 4},
+  'IADD3': [{'code' : 0x210, 'rule' : rf'IADD3{X} {rd}, {pd0i}{pd1i}{rs0}, {icrus1}, {rs2}{ps0i}{ps1i};', 'lat' : 4},
             {'code' : 0x210, 'rule' : rf'IADD3{X} {rd}, {pd0i}{pd1i}{rs0}, {rs2}, {ic2}{ps0i}{ps1i};'}],
   'IMUL' : [{'code' : 0x000, 'rule' : r'IMUL;'}],
-  'LEA'  : [{'code' : 0x211, 'rule' : rf'LEA(?P<hi>\.HI)?{X} {rd}, {pd0i}{rs0}, {icrs1}, {is11w5}{ps0i}{ps1i};'},
-            {'code' : 0x211, 'rule' : rf'LEA(?P<hi>\.HI)?{X} {rd}, {pd0i}{rs0}, {icrs1}, {rs2}, {is11w5}{ps0i}{ps1i};'}],
+  'LEA'  : [{'code' : 0x211, 'rule' : rf'LEA(?P<hi>\.HI)?{X} {rd}, {pd0i}{rs0}, {icrus1}, {is11w5}{ps0i}{ps1i};'},
+            {'code' : 0x211, 'rule' : rf'LEA(?P<hi>\.HI)?{X} {rd}, {pd0i}{rs0}, {icrus1}, {rs2}, {is11w5}{ps0i}{ps1i};'}],
   # Do not capture them () as flags. But treat them as different instructions.
   'IMAD'  : [{'code' : 0x224, 'rule' : rf'IMAD{imadSem}{imadType}{X} {rd}, {pd0i}{rs0}, {icrs1}, {rs2}{ps0i};', 'lat' : 5},
-             {'code' : 0x224, 'rule' : rf'IMAD{imadSem}{imadType}{X} {rd}, {pd0i}{rs0}, {rs2}, {ic2}{ps0i};', 'lat' : 5}, 
-             {'code' : 0x225, 'rule' : rf'IMAD.WIDE {rd}, {pd0i}{rs0}, {icrs1}, {rs2}{ps0i};'}, 
-             {'code' : 0x225, 'rule' : rf'IMAD.WIDE {rd}, {pd0i}{rs0}, {rs2}, {ic2}{ps0i};'}, 
+             {'code' : 0x224, 'rule' : rf'IMAD{imadSem}{imadType}{X} {rd}, {pd0i}{rs0}, {rs2}, {ic2}{ps0i};', 'lat' : 5},
+             {'code' : 0x224, 'rule' : rf'IMAD{imadSem}{imadType}{X} {rd}, {pd0i}{rs0}, {rs2}, {us2e1}{ps0i};', 'lat' : 5}, 
+             {'code' : 0x225, 'rule' : rf'IMAD.WIDE{imadType} {rd}, {pd0i}{rs0}, {icrs1}, {rs2}{ps0i};'}, 
+             {'code' : 0x225, 'rule' : rf'IMAD.WIDE{imadType} {rd}, {pd0i}{rs0}, {rs2}, {ic2}{ps0i};'}, 
              # IMAD.HI is special. rs2 represent register after it. Must be even register.
-             {'code' : 0x227, 'rule' : rf'IMAD.HI{imadType} {rd}, {pd0i}{rs0}, {icrs1}, {rs2};'}], 
-  'ISETP' : [{'code' : 0x20c, 'rule' : rf'ISETP{icmp}{cmpType}{boolOp} {pd0}, {pd1}, {rs0}, {icrs1}, {ps0};', 'lat' : 4}],
-  'LOP3'  : [{'code' : 0x212, 'rule' : rf'LOP3\.LUT {pd0i}{rd}, {rs0}, {icrs1}, {rs2}, {isw8}(?:, {ps0})?;', 'lat' : 5}],
+             {'code' : 0x227, 'rule' : rf'IMAD.HI{imadType} {rd}, {pd0i}{rs0}, {icrs1}, {rs2}{ps0i};'}], 
+  'ISETP' : [{'code' : 0x20c, 'rule' : rf'ISETP{icmp}{cmpType}{boolOp} {pd0}, {pd1}, {rs0}, {icrus1}, {ps0};', 'lat' : 4}],
+  'LOP3'  : [{'code' : 0x212, 'rule' : rf'LOP3\.LUT {pd0i}{rd}, {rs0}, {icrus1}, {rs2}, {isw8}(?:, {ps0})?;', 'lat' : 5}],
   'SHF'   : [{'code' : 0x219, 'rule' : rf'SHF{shf} {rd}, {rs0}, {icrs1}, {rs2};', 'lat' : 5}], # Somethings 4. st. 5.
   'PRMT'  : [{'code' : 0x216, 'rule' : rf'PRMT {rd}, {rs0}, {icrs1}, {rs2};', 'lat': 5}],
   'SEL'   : [{'code' : 0x207, 'rule' : rf'SEL {rd}, {rs0}, {icrs1}, {ps0};', 'lat': 4}],
   'SGXT'  : [{'code' : 0x21a, 'rule' : rf'SGXT{imadType} {rd}, {rs0}, {icrs1};', 'lat': 5}],
   'IABS'  : [{'code' : 0x213, 'rule' : rf'IABS {rd}, {icrs1};', 'lat': 6}],
-  'IMNMX' : [{'code' : 0x217, 'rule' : rf'IMNMX {rd}, {rs0}, {icrs1}, {ps0};'}],
+  'IMNMX' : [{'code' : 0x217, 'rule' : rf'IMNMX{imadType} {rd}, {rs0}, {icrs1}, {ps0};'}],
 
   # Half instructions
   'HADD2' : [{'code' : 0x230, 'rule' : rf'HADD2 {rd}, {rs0}, {rs1};', 'lat' : 7}],
@@ -247,18 +288,18 @@ grammar = {
   # Control instructions
   'BRA'  : [{'code' : 0x947, 'rule' : rf'BRA((?P<bra>\.U))? {cp}{is1};', 'lat' : 7}], # Lat?
   'BSSY' : [{'code' : 0x945, 'rule' : rf'BSSY {sb}, {cp}{is1};'}],
-  'BSYNC': [{'code' : 0x941, 'rule' : rf'BSYNC {sb};'}],
+  'BSYNC': [{'code' : 0x941, 'rule' : rf'BSYNC {cp}{sb};'}],
   'BMOV' : [{'code' : 0x355, 'rule' : rf'BMOV.32.CLEAR {rd}, {sb};'}],
   'EXIT' : [{'code' : 0x94d, 'rule' : rf'EXIT\s*{cp};'}], 
   # Miscellaneous instructions.
   'CS2R' : [{'code' : 0x805, 'rule' : fr'CS2R {rd}, {sr};', 'lat' : 5}],
   'S2R'  : [{'code' : 0x919, 'rule' : fr'S2R {rd}, {sr};', 'lat' : 7}],  
-  'S2UR'  : [{'code' : 0x9c3, 'rule' : fr'S2UR {rd}, {sr};', 'lat': 20}],
+  'S2UR'  : [{'code' : 0x9c3, 'rule' : fr'S2UR {ud}, {sr};', 'lat': 20}],
   'NOP'  : [{'code' : 0x918, 'rule' : r'NOP;'}],
   'YIELD': [{'code' : 0x946, 'rule' : fr'YIELD;'}], # & ps0 = pt
   'BAR'  : [{'code' : 0xb1d, 'rule' : fr'BAR(?P<bar>\.SYNC|\.SYNC.DEFER_BLOCKING|) {bar};'}], 
   # Predicate instructions.
-  'P2R' : [{'code' : 0x803, 'rule' : fr'P2R {rd}, (?P<pr>PR), {is1};', 'lat' : 8}],
+  'P2R' : [{'code' : 0x803, 'rule' : fr'P2R {rd}, (?P<pr>PR), ({rs0}, )?{is1};', 'lat' : 8}],
   'R2P' : [{'code' : 0x804, 'rule' : fr'R2P PR, {rs0}, {is1};', 'lat' : 12}],
   # Shuffle
   'SHFL' : [{'code' : 0x389, 'rule' : fr'SHFL{shfl} {pd0}, {rd}, {rs0}, {icrs1}, {shflMask};', 'lat' : 20}],
@@ -277,13 +318,13 @@ grammar = {
   'ATOMG' : [{'code' : 0x3a9, 'rule' : fr'ATOMG.CAS{memStrong}{memScope} {rd}, {addr24}, {rs1}, {rs2};'},
               {'code' : 0x3a8, 'rule' : fr'ATOMG.EXCH{memStrong}{memScope} {rd}, {addr24}, {rs1};'}],
   # with UR offset [R2+UR4+0x4] => bits[27:26] = 0b11
-  'RED' : [{'code' : 0x98e, 'rule' : fr'RED{redOp}{redType}{memStrong}{memScope} {addr24}, {rs1};'}],
+  'RED' : [{'code' : 0x98e, 'rule' : fr'RED{redOp}{memCache}{redType}{memStrong}{memScope} {addr24}, {rs1};'}],
 }
 
 
 
 flag_str = '''
-LDG, STG, LDS, STS, LDC, LDGSTS: type
+LDG, STG, LDS, STS, LDC, ULDC, LDGSTS: type
 0<<9 .U8
 1<<9 .S8
 2<<9 .U16
@@ -299,10 +340,13 @@ LDG, STG, ATOMS, ATOMG, RED: strong
 2<<15 .STRONG
 3<<15 .WEEK     # FIXME
 
-LDG, STG: cache
+LDG, STG, RED: cache
 0<<20 .EF
 1<<20 DEFAULT
 3<<20 .LU
+
+LDG: off64
+1<<26 .64
 
 LDS: U
 1<<12 .U
@@ -327,7 +371,7 @@ LDSM: numMat
 BRA: is1neg
 262143<<0 - # 0x3ffff
 
-S2R: sr
+S2R, S2UR: sr
 0<<8 SR_LANEID
 33<<8 SR_TID.X
 34<<8 SR_TID.Y
@@ -340,7 +384,7 @@ CS2R: sr
 80<<8 SR_CLOCKLO
 511<<8 SRZ
 
-IMAD: type
+IMAD, IMNMX: type
 0<<0 .U32
 1<<9 DEFAULT
 1<<9 .S32 
@@ -385,11 +429,11 @@ ISETP: type
 P2R: pr
 255<<88 PR
 
-SHF: lr
+SHF, USHF: lr
 0<<12 .L
 1<<12 .R
 
-SHF: type
+SHF, USHF: type
 0<<8 .S64
 0<<8 .U64
 4<<8 .S32
@@ -402,30 +446,42 @@ SHFL: shfl
 2<<122 .DOWN
 3<<122 .BFLY
 
-SHF, LEA: hi
+SHF, LEA, ULEA: hi
 1<<16 .HI
 
-IADD3, LOP3, IMAD, LEA: nopd0
+IADD3, UIADD3, LOP3, IMAD, LEA, ULEA: nopd0
 7<<17
 
-IADD3: nopd1
+IADD3, UIADD3: nopd1
 7<<20
 
-IADD3, LOP3, IMAD, LEA, LDGSTS: nops0
+IADD3, UIADD3, LOP3, IMAD, LEA, ULEA, LDGSTS: nops0
 15<<23
 
-IADD3: nops1
+IADD3, UIADD3: nops1
 15<<13
 
-IADD3, LEA, IMAD: x
+IADD3, UIADD3, LEA, ULEA, IMAD: x
 1<<10 .X
 
 
 FADD, IADD3: rs1neg
 1<<127 -
 
+UIADD3: us1neg
+1<<127 -
+
 FADD, IADD3: rs0neg
 1<<8 -
+
+UIADD3: us0neg
+1<<8 -
+
+IMAD: rs2neg
+1<<11 -
+
+ULEA: sx32
+1<<9 .SX32
 
 MUFU: mufu
 0<<10 .COS
@@ -599,7 +655,11 @@ for line in flag_str.split('\n'):
     ops = re.split(r',\s*', ops)
     # Create new dict for this flag.
     for op in ops:
-      flags[op][name] = {}
+      try:
+        flags[op][name] = {}
+      except Exception as e:
+        print(ops)
+        raise e
 
 
 
@@ -662,7 +722,11 @@ icr_dict = {
   'cs1add' : 0x6,
   'is2'  : 0x4,
   'cs2'  : 0x6,
-  'fs2'  : 0x4
+  'fs2'  : 0x4,
+  'us1'  : 0xc,
+  'us2e1'  : 0xe, # IMAD
+  'uoffld' : 0x9, # LDG
+  'uoffst' : 0x9, # STS
 }
 
 def GenCode(op, gram, captured_dict, asm_line):
@@ -704,8 +768,17 @@ def GenCode(op, gram, captured_dict, asm_line):
   for key in icr_dict.keys():
     if key in captured_dict:
       if captured_dict[key] != None:
+        if 'ud' in captured_dict and key in ['us1', 'us2'] \
+                                 and asm_line['op'] != 'UMOV': # skip u-instr
+          continue
         code &= ~(1<<(64+9))
         code |= icr_dict[key] << 72
+
+  # Special rules for ur
+  for key in captured_dict:
+    if key in ['us0', 'us1', 'us2', 'us2e1', 'uoffld', 'uoffst'] and captured_dict[key] != None:
+      # if not 'ud' in key:
+      code |= 0x1<<27
 
   # Operands
   for key, value in captured_dict.items():
@@ -740,9 +813,12 @@ def GenCode(op, gram, captured_dict, asm_line):
     code |= 0x8101d46
   if op == 'BMOV':
     code |= 0x100000
+  if op == 'LEA': # LEA has RZ as default operand
+    code |= 0xff
+  if op == 'ULEA':
+    code |= 0x3f
   # if op == 'BRA':
   #  code |= 0x1 << 96
-
 
   return code
 
