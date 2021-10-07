@@ -7,7 +7,7 @@ def main():
   parser.add_argument('-i', '--input', help='input asm file', dest='input_asm', required=True, metavar='FILE')
   parser.add_argument('-o', '--output', help='output cubin file', dest='output_cubin', required=True, metavar='FILE')
   parser.add_argument('-inc', '--include', help='include files', nargs='+')
-  parser.add_argument('-arch', dest='arch', default=75, type=int, choices=[70, 75, 80])
+  parser.add_argument('-arch', dest='arch', default=75, type=int, choices=[70, 75, 80, 86])
   args = parser.parse_args()
 
 
@@ -24,11 +24,11 @@ def main():
     file, params = SetParameterMap(file)
     file, consts = SetConstsMap(file)
     file   = ReplaceRegParamConstMap(file, regs, params, consts)
-    kernel = Assemble(file)
+    kernel = assemble(file)
 
   # Write out cubin file
   cubin = Cubin(arch=args.arch)
-  cubin.AddKernel(kernel, b'kern', params, consts) 
+  cubin.add_kernel(kernel, b'kern', params, consts) 
   cubin.Write(args.output_cubin)
 
 

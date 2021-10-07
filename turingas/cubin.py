@@ -1,4 +1,4 @@
-from .turas import Assemble
+from .turas import assemble
 from .ELF import *
 from struct import unpack, pack
 from functools import reduce
@@ -345,7 +345,7 @@ class Cubin():
 
 
   # TODO: name of the kernel?
-  def AddKernel(self, kernel, name, params, consts):
+  def add_kernel(self, kernel, name, params, consts):
     # Only support *ONE* kernel per cubin file.
     '''
     For each kernel:
@@ -447,6 +447,19 @@ class Cubin():
 
     self.p_progbits.memsz  = self.p_progbits.filesz
 
+  def to_binary(self):
+    '''
+    Write data to binary stream
+    '''
+    res = b''
+    res += self.header.PackHeader()
+    for sec in self.sections:
+      res += sec.data
+    for sec in self.sections:
+      res += sec.PackHeader()
+    for pro in self.programs:
+      res += pro.PackHeader()
+    return res
 
   def Write(self, path):
     '''

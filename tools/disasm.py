@@ -36,8 +36,9 @@ def processSassLines(fline, sline, labels):
       labels[target] = len(labels)
   # BSSY target address
   if BSSY_RE.match(asm) != None:
-    target = int(BSSY_RE)
-  return (f'{ctrl}', f'{asm}')
+    target = int(BSSY_RE.match(asm).group(2), 16)
+    if target not in labels:
+      labels[target] = len(labels)
 
 
 def extract(file_path, fun):
@@ -96,6 +97,10 @@ def extract(file_path, fun):
         target = int(BRA_RE.match(asm).group(2), 16)
         target_name = f'LBB{labels[target]}'
         asm = BRA_RE.sub(rf'\1{target_name};', asm)
+      if BSSY_RE.match(asm):
+        target = int(BSSY_RE.match(asm).group(2), 16)
+        target_name = f'LBB{labels[target]}'
+        asm = BSSY_RE.sub(rf'\1{target_name};', asm)
       print(asm)
     print('\n')
 

@@ -10,7 +10,7 @@ def StripSpace(file):
   file = re.sub(r'(?<=;).*', '', file)
   return file
 
-def Assemble(file, include=None):
+def assemble(file, include=None):
   '''
   return {
       RegCnt       => $regCnt,

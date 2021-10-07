@@ -220,7 +220,8 @@ grammar = {
   'MOV' : [{'code' : 0x202, 'rule' : rf'MOV {rd}, {icrs1};', 'lat' : 5}],
 
   # Load/Store instructions 
-  'LDG' : [{'code' : 0x381, 'rule' : rf'LDG{memType}{memCache}{memStrong}{memScope}\s*{ldgp} {rd}, {addr24ld};' }],
+  'LDG' : [{'code' : 0x381, 'rule' : rf'LDG{memType}{memCache}{memStrong}{memScope}\s*{ldgp} {rd}, {addr24};' },
+           {'code' : 0x981, 'rule' : rf'LDG{memType}{memCache}{memStrong}{memScope}\s*{ldgp} {rd}, {addr24ld};'}],
   'STG' : [{'code' : 0x386, 'rule' : rf'STG{memType}{memCache}{memScope}{memStrong} {addr24}, {rs1};'}],
   'LDS' : [{'code' : 0x984, 'rule' : rf'LDS{memType}{memCache} {rd}, {addr24};'}],
   'STS' : [{'code' : 0x388, 'rule' : rf'STS{memType}{memCache} {addr24st}, {rs1};'}],
@@ -248,8 +249,8 @@ grammar = {
   'IADD3': [{'code' : 0x210, 'rule' : rf'IADD3{X} {rd}, {pd0i}{pd1i}{rs0}, {icrus1}, {rs2}{ps0i}{ps1i};', 'lat' : 4},
             {'code' : 0x210, 'rule' : rf'IADD3{X} {rd}, {pd0i}{pd1i}{rs0}, {rs2}, {ic2}{ps0i}{ps1i};'}],
   'IMUL' : [{'code' : 0x000, 'rule' : r'IMUL;'}],
-  'LEA'  : [{'code' : 0x211, 'rule' : rf'LEA(?P<hi>\.HI)?{X} {rd}, {pd0i}{rs0}, {icrus1}, {is11w5}{ps0i}{ps1i};'},
-            {'code' : 0x211, 'rule' : rf'LEA(?P<hi>\.HI)?{X} {rd}, {pd0i}{rs0}, {icrus1}, {rs2}, {is11w5}{ps0i}{ps1i};'}],
+  'LEA'  : [{'code' : 0x211, 'rule' : rf'LEA(?P<hi>\.HI)?{X}(?P<sx32>\.SX32)? {rd}, {pd0i}{rs0}, {icrus1}, {is11w5}{ps0i}{ps1i};'},
+            {'code' : 0x211, 'rule' : rf'LEA(?P<hi>\.HI)?{X}(?P<sx32>\.SX32)? {rd}, {pd0i}{rs0}, {icrus1}, {rs2}, {is11w5}{ps0i}{ps1i};'}],
   # Do not capture them () as flags. But treat them as different instructions.
   'IMAD'  : [{'code' : 0x224, 'rule' : rf'IMAD{imadSem}{imadType}{X} {rd}, {pd0i}{rs0}, {icrs1}, {rs2}{ps0i};', 'lat' : 5},
              {'code' : 0x224, 'rule' : rf'IMAD{imadSem}{imadType}{X} {rd}, {pd0i}{rs0}, {rs2}, {ic2}{ps0i};', 'lat' : 5},
@@ -305,6 +306,7 @@ grammar = {
   'SHFL' : [{'code' : 0x389, 'rule' : fr'SHFL{shfl} {pd0}, {rd}, {rs0}, {icrs1}, {shflMask};', 'lat' : 20}],
   # Conversion
   'F2F' : [{'code' : 0x304, 'rule' : fr'F2F(?P<dtype>\.F16|\.F32)(?P<stype>\.F16|\.F32) {rd}, {rs1};', 'lat':5}],
+  'F2FP': [{'code' : 0x23e, 'rule' : fr'F2FP(?P<relu>\.RELU)?(?P<dtype>\.BF16)?\.PACK_AB {rd}, {rs0}, {fcrs1};'}],
   'F2I' : [{'code' : 0x305, 'rule' : fr'F2I{f2i32}{irnd} {rd}, {rs1};'}, 
            # 64-bit
            {'code' : 0x311, 'rule' : fr'F2I{f2i64}{irnd} {rd}, {rs1};'}],
@@ -318,7 +320,7 @@ grammar = {
   'ATOMG' : [{'code' : 0x3a9, 'rule' : fr'ATOMG.CAS{memStrong}{memScope} {rd}, {addr24}, {rs1}, {rs2};'},
               {'code' : 0x3a8, 'rule' : fr'ATOMG.EXCH{memStrong}{memScope} {rd}, {addr24}, {rs1};'}],
   # with UR offset [R2+UR4+0x4] => bits[27:26] = 0b11
-  'RED' : [{'code' : 0x98e, 'rule' : fr'RED{redOp}{memCache}{redType}{memStrong}{memScope} {addr24}, {rs1};'}],
+  'RED' : [{'code' : 0x98e, 'rule' : fr'RED{redOp}{memCache}{redType}{memStrong}{memScope} {addr24ld}, {rs1};'}],
 }
 
 
@@ -345,18 +347,19 @@ LDG, STG, RED: cache
 1<<20 DEFAULT
 3<<20 .LU
 
-LDG: off64
+LDG, RED: off64
 1<<26 .64
 
 LDS: U
 1<<12 .U
 
-LDG, STG, LDGSTS, RED: E
+LDG, STG, RED: E
 1<<8 .E
 
 LDG, STG, ATOMG, RED: scope
 0<<13 .CTA
 2<<13 .GPU
+3<<13 DEFAULT
 3<<13 .SYS
 
 LDSM: ldsmLayout
@@ -367,6 +370,9 @@ LDSM: numMat
 0<<8 .1
 1<<8 .2
 2<<8 .4
+
+LDGSTS: ltc128b # other LDST use bit[8] to encode .E
+1<<8 .LTC128B
 
 BRA: is1neg
 262143<<0 - # 0x3ffff
@@ -480,7 +486,7 @@ UIADD3: us0neg
 IMAD: rs2neg
 1<<11 -
 
-ULEA: sx32
+LEA, ULEA: sx32
 1<<9 .SX32
 
 MUFU: mufu
@@ -569,6 +575,13 @@ F2F: dtype
 
 F2F: stype
 1<<11 .F32
+
+F2FP: type
+0<<16 DEFAULT
+1<<16 .BF16
+
+F2FP: relu
+1<<16 .RELU
 
 I2F: dtype
 1<<11 .F16
@@ -810,15 +823,22 @@ def GenCode(op, gram, captured_dict, asm_line):
   if op == 'LDC':
     code |= 0xff << 88
   if op == 'LDGSTS':
-    code |= 0x8101d46
+    code |= 0x8101c48
   if op == 'BMOV':
     code |= 0x100000
   if op == 'LEA': # LEA has RZ as default operand
     code |= 0xff
   if op == 'ULEA':
     code |= 0x3f
+  if op == 'F2FP':
+    code |= 0xff
+  if op == 'RED':
+    code |= 0x0
   # if op == 'BRA':
   #  code |= 0x1 << 96
+
+  # if op == 'LDG':
+  #   print(hex(code))
 
   return code
 
