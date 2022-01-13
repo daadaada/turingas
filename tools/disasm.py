@@ -39,7 +39,7 @@ def processSassLines(fline, sline, labels):
     target = int(BSSY_RE.match(asm).group(2), 16)
     if target not in labels:
       labels[target] = len(labels)
-
+  return ctrl, asm
 
 def extract(file_path, fun):
   if fun == None:
