@@ -59,6 +59,11 @@ fcrs1 = fr'(?:(?:{fs1})|(?:{cs1})|(?:{rs1}))'
 fcrs1add = fr'(?:(?:{fs1add})|(?:{cs1add})|(?:{rs1}))'
 cp    = fr'(?:(?:(?P<cp>{p}),?)|(?P<nocp>))' # CP: control instructions predicate
 shflMask = fr'(?P<shflMask>(?:{immed}))'
+shflLane = fr'(?P<shflLane>(?:{immed}))'
+# SHFL does not use the generic arithmetic immediate-source encoding.
+shflSource = fr'(?P<rs0>{reg})'
+shflLaneReg = fr'(?P<rs1>{reg})'
+shflClampReg = fr'(?P<rs2>{reg})'
 ldgp  = fr'(?:(?:(?P<ldgp>{p}),?)|(?P<noldgp>))'
 sb    = fr'(?P<sb>B[0-6])' # barriers
 sr = r'(?P<sr>\S+)'
@@ -88,6 +93,12 @@ def GetP(value, shift):
 def GetI(value, shift, mask=0xffffffff):
   value = int(value, 0)
   return (value & mask) << shift
+
+def GetShflImmediate(value, shift, bits):
+  value = int(value, 0)
+  if not 0 <= value < (1 << bits):
+    raise ValueError(f'SHFL immediate must fit in {bits} unsigned bits.')
+  return value << shift
 
 def GetF(value, shift):
   value = float(value)
@@ -126,7 +137,8 @@ operands = {
   'is0w24':lambda value: GetI(value, 104, 0xffffff),
   'is0w20':lambda value: GetI(value, 108, 0xfffff),
   'is96w12' : lambda value : GetI(value, 96, 0xfff),
-  'shflMask' :lambda value: GetI(value, 104, 0x1f),
+  'shflMask' :lambda value: GetShflImmediate(value, 104, 13),
+  'shflLane' :lambda value: GetShflImmediate(value, 117, 5),
   'isw8': lambda value : GetI(value, 8, 0xff),
   'is11w5' : lambda value : GetI(value, 11, 0x1f),
   'is1' : lambda value : GetI(value, 96),
@@ -303,7 +315,10 @@ grammar = {
   'P2R' : [{'code' : 0x803, 'rule' : fr'P2R {rd}, (?P<pr>PR), ({rs0}, )?{is1};', 'lat' : 8}],
   'R2P' : [{'code' : 0x804, 'rule' : fr'R2P PR, {rs0}, {is1};', 'lat' : 12}],
   # Shuffle
-  'SHFL' : [{'code' : 0x389, 'rule' : fr'SHFL{shfl} {pd0}, {rd}, {rs0}, {icrs1}, {shflMask};', 'lat' : 20}],
+  'SHFL' : [{'code' : 0x389, 'rule' : fr'SHFL{shfl} {pd0}, {rd}, {shflSource}, {shflLaneReg}, {shflClampReg};', 'lat' : 20},
+            {'code' : 0x589, 'rule' : fr'SHFL{shfl} {pd0}, {rd}, {shflSource}, {shflLaneReg}, {shflMask};', 'lat' : 20},
+            {'code' : 0x989, 'rule' : fr'SHFL{shfl} {pd0}, {rd}, {shflSource}, {shflLane}, {shflClampReg};', 'lat' : 20},
+            {'code' : 0xf89, 'rule' : fr'SHFL{shfl} {pd0}, {rd}, {shflSource}, {shflLane}, {shflMask};', 'lat' : 20}],
   # Conversion
   'F2F' : [{'code' : 0x304, 'rule' : fr'F2F(?P<dtype>\.F16|\.F32)(?P<stype>\.F16|\.F32) {rd}, {rs1};', 'lat':5}],
   'F2FP': [{'code' : 0x23e, 'rule' : fr'F2FP(?P<relu>\.RELU)?(?P<dtype>\.BF16)?\.PACK_AB {rd}, {rs0}, {fcrs1};'}],

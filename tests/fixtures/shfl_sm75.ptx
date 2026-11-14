@@ -1,0 +1,440 @@
+// Independent SHFL encoding corpus. Target sm_70 permits SM70/75/80 compilation.
+// Generated fixtures: CUDA ptxas release 12.9 V12.9.86, nvdisasm V12.9.88.
+// Reproduce for each SM in 70 75 80:
+// ptxas -arch=sm_$SM tests/fixtures/shfl_sm75.ptx -o shfl_sm$SM.cubin
+// nvdisasm -c -hex shfl_sm$SM.cubin
+.version 7.0
+.target sm_70
+.address_size 64
+
+.visible .entry shfl_idx_reg_reg(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.idx.b32 %d|%p, %a, %b, %c, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
+
+.visible .entry shfl_idx_reg_imm(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.idx.b32 %d|%p, %a, %b, 31, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
+
+.visible .entry shfl_idx_reg_segment(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.idx.b32 %d|%p, %a, %b, 0x1f1f, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
+
+.visible .entry shfl_idx_imm_reg(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.idx.b32 %d|%p, %a, 7, %c, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
+
+.visible .entry shfl_idx_imm_imm(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.idx.b32 %d|%p, %a, 7, 31, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
+
+.visible .entry shfl_idx_imm_segment(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.idx.b32 %d|%p, %a, 7, 0x1f1f, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
+
+.visible .entry shfl_bfly_reg_reg(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.bfly.b32 %d|%p, %a, %b, %c, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
+
+.visible .entry shfl_bfly_reg_imm(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.bfly.b32 %d|%p, %a, %b, 31, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
+
+.visible .entry shfl_bfly_reg_segment(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.bfly.b32 %d|%p, %a, %b, 0x1f1f, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
+
+.visible .entry shfl_bfly_imm_reg(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.bfly.b32 %d|%p, %a, 7, %c, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
+
+.visible .entry shfl_bfly_imm_imm(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.bfly.b32 %d|%p, %a, 7, 31, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
+
+.visible .entry shfl_bfly_imm_segment(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.bfly.b32 %d|%p, %a, 7, 0x1f1f, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
+
+.visible .entry shfl_up_reg_reg(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.up.b32 %d|%p, %a, %b, %c, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
+
+.visible .entry shfl_up_reg_imm(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.up.b32 %d|%p, %a, %b, 31, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
+
+.visible .entry shfl_up_reg_segment(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.up.b32 %d|%p, %a, %b, 0x1f1f, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
+
+.visible .entry shfl_up_imm_reg(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.up.b32 %d|%p, %a, 7, %c, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
+
+.visible .entry shfl_up_imm_imm(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.up.b32 %d|%p, %a, 7, 31, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
+
+.visible .entry shfl_up_imm_segment(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.up.b32 %d|%p, %a, 7, 0x1f1f, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
+
+.visible .entry shfl_down_reg_reg(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.down.b32 %d|%p, %a, %b, %c, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
+
+.visible .entry shfl_down_reg_imm(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.down.b32 %d|%p, %a, %b, 31, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
+
+.visible .entry shfl_down_reg_segment(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.down.b32 %d|%p, %a, %b, 0x1f1f, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
+
+.visible .entry shfl_down_imm_reg(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.down.b32 %d|%p, %a, 7, %c, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
+
+.visible .entry shfl_down_imm_imm(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.down.b32 %d|%p, %a, 7, 31, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
+
+.visible .entry shfl_down_imm_segment(.param .u64 out, .param .u32 a, .param .u32 b, .param .u32 c)
+{
+.reg .b64 %ptr;
+.reg .b32 %a, %b, %c, %d, %valid, %laneid;
+.reg .pred %p;
+ld.param.u64 %ptr, [out];
+ld.param.u32 %a, [a];
+mov.u32 %laneid, %tid.x;
+add.u32 %a, %a, %laneid;
+ld.param.u32 %b, [b];
+ld.param.u32 %c, [c];
+shfl.sync.down.b32 %d|%p, %a, 7, 0x1f1f, 0xffffffff;
+selp.u32 %valid, 1, 0, %p;
+st.global.u32 [%ptr], %d;
+st.global.u32 [%ptr+4], %valid;
+ret;
+}
